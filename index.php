@@ -23,6 +23,19 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+define(DCSVI_PREFIX, 'dcsvi_prefix_');
+define(DCSVI_PLUGIN_DIR_PATH, plugin_dir_path(__FILE__) );
+
+// HTML Template library:
+require_once DCSVI_PLUGIN_DIR_PATH . '/library/Twig/Autoloader.php';
+Twig_Autoloader::register();
+$template_loader = new Twig_Loader_Filesystem( DCSVI_PLUGIN_DIR_PATH. '/view/template' );
+$twig = new Twig_Environment($loader, array(
+    'cache' => '/view/template_cache',
+));
+
+echo $twig->render('index.html', array('name' => 'Fabien'));
+
 $upload_dir = wp_upload_dir();
 $import_dir  = $upload_dir['basedir']."/import_temp/";
 if(!is_dir($import_dir)) {
@@ -116,12 +129,11 @@ function move_file() {
 
 // Remove file
 function fileDelete($filepath,$filename) {
-	$success = FALSE;
 	if (file_exists($filepath.$filename)&&$filename!=""&&$filename!="n/a") {
 		unlink ($filepath.$filename);
-		$success = TRUE;
+		return TRUE;
 	}
-	return $success;	
+	return FALSE;
 }
 
 // Map the fields and upload data:
@@ -351,7 +363,7 @@ function upload_csv_file() {
 		$CSVfile = $_POST['filename'];
 		if(file_exists($csvdir.$CSVfile)){
 			chmod("$csvdir"."$CSVfile", 755);
-			fileDelete($csvdir,$CSVfile); 
+			fileDelete($csvdir,$CSVfile);
 		}
 	} else {
     	?>
