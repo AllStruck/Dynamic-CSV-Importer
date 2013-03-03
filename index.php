@@ -23,136 +23,125 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-    $upload_dir = wp_upload_dir();
-    $importdir  = $upload_dir['basedir']."/import_temp/";
-    if(!is_dir($importdir))
-    {
-    	wp_mkdir_p($importdir);
-    }
+$upload_dir = wp_upload_dir();
+$import_dir  = $upload_dir['basedir']."/import_temp/";
+if(!is_dir($import_dir)) {
+	wp_mkdir_p($import_dir);
+}
 
 // Global variable declaration
-    global $data_rows, $headers, $defaults, $wpdb, $keys, $delim;
-    $data_rows = array();
-    $headers = array();
+global $data_rows, $headers, $defaults, $wpdb, $keys, $delim;
+$data_rows = array();
+$headers = array();
 
 // Set the delimiter:
-    $delim = empty($_POST['delim']) ? '' : $_POST['delim'];
+$delim = empty($_POST['delim']) ? '' : $_POST['delim'];
 // Get the custom fields
-    $limit = (int) apply_filters( 'postmeta_form_limit', 30 );
-    $keys = $wpdb->get_col( "
-    	SELECT meta_key
-    	FROM $wpdb->postmeta
-    	GROUP BY meta_key
-    	HAVING meta_key NOT LIKE '\_%'
-    	ORDER BY meta_key
-    	LIMIT $limit" );
+$limit = (int) apply_filters( 'postmeta_form_limit', 30 );
+$keys = $wpdb->get_col( "
+	SELECT meta_key
+	FROM $wpdb->postmeta
+	GROUP BY meta_key
+	HAVING meta_key NOT LIKE '\_%'
+	ORDER BY meta_key
+	LIMIT $limit" );
 // Default header array
-    $defaults = array(
-    	'post_title'      => null,
-    	'post_content'    => null,
-    	'post_excerpt'    => null,
-    	'post_date'       => null,
-    	'post_tag'        => null,
-    	'post_category'	  => null,
-    	'post_author'     => null,
-    	'featured_image'  => null,
-    	'post_parent'     => 0,
-    	);
-    foreach($keys as $val){
-    	$defaults[$val]=$val;
-    }
+$defaults = array(
+	'post_title'      => null,
+	'post_content'    => null,
+	'post_excerpt'    => null,
+	'post_date'       => null,
+	'post_tag'        => null,
+	'post_category'	  => null,
+	'post_author'     => null,
+	'featured_image'  => null,
+	'post_parent'     => 0,
+	);
+foreach($keys as $val) {
+	$defaults[$val]=$val;
+}
 // Admin menu settings
-    function dynamic_csv_importer() {  
-    	add_submenu_page( 'tools.php', 'Dynamic CSV Importer', 'CSV Importer', 'manage_options', 'dynamic_csv_importer', 'upload_csv_file');
-    	add_menu_page('CSV importer settings', 'CSV Importer', 'manage_options',  
-    		'upload_csv_file', 'upload_csv_file');
-    }  
+function dynamic_csv_importer() {  
+	add_submenu_page( 'tools.php', 'Dynamic CSV Importer', 'CSV Importer', 'manage_options', 'dynamic_csv_importer', 'upload_csv_file');
+	add_menu_page('CSV importer settings', 'CSV Importer', 'manage_options',  
+		'upload_csv_file', 'upload_csv_file');
+}  
 
 
-    function LoadWpScript()
-    {
-    	wp_register_script('dynamic_csv_importer_scripts', site_url()."/wp-content/plugins/wp-ultimate-csv-importer/dynamic_csv_importer.js", array("jquery"));
-    	wp_enqueue_script('dynamic_csv_importer_scripts');
-    }
-    add_action('admin_enqueue_scripts', 'LoadWpScript');
+function LoadWpScript() {
+	wp_register_script('dynamic_csv_importer_scripts', site_url()."/wp-content/plugins/wp-ultimate-csv-importer/dynamic_csv_importer.js", array("jquery"));
+	wp_enqueue_script('dynamic_csv_importer_scripts');
+}
+add_action('admin_enqueue_scripts', 'LoadWpScript');
 
 
-    add_action("admin_menu", "dynamic_csv_importer");  
+add_action("admin_menu", "dynamic_csv_importer");  
 
 // Plugin description details
-    function description(){
-    	$string = "<p>Dynamic CSV Importer will add new posts, pages, or custom posts of a custom type from a CSV file. You do not need to change the CSV file; select the CSV file and map each field to the post field (custom meta fields are supported).</p> 
-    	<p>";
-    	return $string;
-    }
+function description() {
+	_e('<p>Dynamic CSV Importer will add new posts, pages, or custom posts of a custom type from a CSV file. You do not need to change the CSV file; select the CSV file and map each field to the post field (custom meta fields are supported).</p> 
+	<p>');
+}
 
 // CSV File Reader
-    function csv_file_data($file,$delim)
-    {
-    	ini_set("auto_detect_line_endings", true);
-    	global $data_rows;
-    	global $headers;
-    	global $delim;
-    	$c = 0;
-    	$resource = fopen($file, 'r');
-    	while ($keys = fgetcsv($resource,'',"$delim",'"')) {
-    		if ($c == 0) {
-    			$headers = $keys;
-    		} else {
-    			array_push($data_rows, $keys);
-    		}
-    		$c ++;
-    	}
-    	fclose($resource);
-    	ini_set("auto_detect_line_endings", false);
-    }
+function csv_file_data($file,$delim) {
+	ini_set('auto_detect_line_endings', true);
+	global $data_rows;
+	global $headers;
+	global $delim;
+	$c = 0;
+	$resource = fopen($file, 'r');
+	while ($keys = fgetcsv($resource,'',$delim,'"')) {
+		if ($c == 0) {
+			$headers = $keys;
+		} else {
+			array_push($data_rows, $keys);
+		}
+		$c ++;
+	}
+	fclose($resource);
+	ini_set('auto_detect_line_endings', false);
+}
 
 // Move file
-    function move_file()
-    {
-    	$upload_dir = wp_upload_dir();
-    	$uploads_dir  = $upload_dir['basedir']."/import_temp/";
-    	if ($_FILES["csv_import"]["error"] == 0) {
-    		$tmp_name = $_FILES["csv_import"]["tmp_name"];
-    		$name = $_FILES["csv_import"]["name"];
-    		move_uploaded_file($tmp_name, "$uploads_dir/$name");
-    	}
-    }
+function move_file() {
+	$upload_dir = wp_upload_dir();
+	$uploads_dir  = $upload_dir['basedir'] . '/import_temp/';
+	if ($_FILES['csv_import']['error'] == 0) {
+		$tmp_name = $_FILES['csv_import']['tmp_name'];
+		$name = $_FILES['csv_import']['name'];
+		move_uploaded_file($tmp_name, '$uploads_dir/$name');
+	}
+}
 
 // Remove file
-    function fileDelete($filepath,$filename) {
-    	$success = FALSE;
-    	if (file_exists($filepath.$filename)&&$filename!=""&&$filename!="n/a") {
-    		unlink ($filepath.$filename);
-    		$success = TRUE;
-    	}
-    	return $success;	
-    }
+function fileDelete($filepath,$filename) {
+	$success = FALSE;
+	if (file_exists($filepath.$filename)&&$filename!=""&&$filename!="n/a") {
+		unlink ($filepath.$filename);
+		$success = TRUE;
+	}
+	return $success;	
+}
 
-// Mapping the fields and upload data's
-    function upload_csv_file()
-    {
-    	global $headers;
-    	global $data_rows;
-    	global $defaults;
-    	global $keys;
-    	global $custom_array;
-    	global $delim;
-    	$upload_dir = wp_upload_dir();
-    	$importdir  = $upload_dir['basedir']."/import_temp/";
-    	$custom_array = array();
-    	if(isset($_POST['Import']))
-    	{
-    		csv_file_data($_FILES['csv_import']['tmp_name'],$delim);
-    		move_file();
-    		?>
-    		<?php if ( count($headers)>=1 &&  count($data_rows)>=1 ){?>
-    		<div style="float:left;min-width:45%">
-    			<form class="add:the-list: validate" method="post" onsubmit="return import_csv();">
-    				<h3>Import Data Configuration</h3>
-    				<div style="margin-top:30px;>
-    					<input name="_csv_importer_import_as_draft" type="hidden" value="publish" />
-    					<label><input name="csv_importer_import_as_draft" type="checkbox" <?php if ('draft' == $opt_draft) { echo 'checked="checked"'; } ?> value="draft" /> Import as drafts </label>&nbsp;&nbsp;
+// Map the fields and upload data:
+function upload_csv_file() {
+	global $headers, $data_rows, $defaults, $keys, $custom_array, $delim;
+	
+    $upload_dir = wp_upload_dir();
+	$import_dir  = $upload_dir['basedir'] . '/import_temp/';
+	$custom_array = array();
+	if(isset($_POST['Import'])) {
+		csv_file_data($_FILES['csv_import']['tmp_name'],$delim);
+		move_file();
+		?>
+		<?php if ( count($headers)>=1 &&  count($data_rows)>=1 ){?>
+		<div style="float:left;min-width:45%">
+			<form class="add:the-list: validate" method="post" onsubmit="return import_csv();">
+				<h3>Import Data Configuration</h3>
+				<div style="margin-top:30px;>
+					<input name="_csv_importer_import_as_draft" type="hidden" value="publish" />
+					<label><input name="csv_importer_import_as_draft" type="checkbox" <?php if ('draft' == $opt_draft) { echo 'checked="checked"'; } ?> value="draft" /> Import as drafts </label>&nbsp;&nbsp;
     				</p>
     				<label> Select Post Type </label>&nbsp;&nbsp;
     				<select name='csv_importer_cat'>
@@ -356,7 +345,6 @@
 			</form>
 		</div>
 		<?php 
-// Code modified at version 1.1.2
 	// Remove CSV file
 		$upload_dir = wp_upload_dir();
 		$csvdir  = $upload_dir['basedir']."/import_temp/";
@@ -365,32 +353,29 @@
 			chmod("$csvdir"."$CSVfile", 755);
 			fileDelete($csvdir,$CSVfile); 
 		}
-	}
-	else
-	{
-		?>
-		<div class="wrap">
-			<div style="min-width:45%;float:left;height:500px;">
-				<h2>Dynamic CSV Importer</h2>
-				<form class="add:the-list: validate" method="post" enctype="multipart/form-data" onsubmit="return file_exist();">
+	} else {
+    	?>
+    	<div class="wrap">
+    		<div style="min-width:45%;float:left;height:500px;">
+    			<h2>Dynamic CSV Importer</h2>
+    			<form class="add:the-list: validate" method="post" enctype="multipart/form-data" onsubmit="return file_exist();">
 
-					<!-- File input -->
-					<p><label for="csv_import">Upload file:</label><br/>
-						<input name="csv_import" id="csv_import" type="file" value="" aria-required="true" /></p><br/>
-						<p><label>Delimiter</label>&nbsp;&nbsp;&nbsp;
-							<select name="delim" id="delim">
-								<option value=",">,</option>
-								<option value=";">;</option>
-							</select>
-						</p>
-						<p class="submit"><input type="submit" class="button" name="Import" value="Import" /></p>
-					</form>
-				</div>
-				<div style="min-width:45%;">
-					<?php $result = description(); print_r($result); ?>
-				</div>
-			</div><!-- end wrap -->
-			<?php
-		}
+    				<!-- File input -->
+    				<p><label for="csv_import">Upload file:</label><br/>
+    					<input name="csv_import" id="csv_import" type="file" value="" aria-required="true" /></p><br/>
+    					<p><label>Delimiter</label>&nbsp;&nbsp;&nbsp;
+    						<select name="delim" id="delim">
+    							<option value=",">,</option>
+    							<option value=";">;</option>
+    						</select>
+    					</p>
+    					<p class="submit"><input type="submit" class="button" name="Import" value="Import" /></p>
+    				</form>
+    			</div>
+    			<div style="min-width:45%;">
+    				<?php $result = description(); print_r($result); ?>
+    			</div>
+    		</div><!-- end wrap -->
+    	<?php
 	}
-
+}
