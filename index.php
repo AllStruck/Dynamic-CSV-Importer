@@ -34,7 +34,7 @@ $twig = new Twig_Environment($loader, array(
     'cache' => '/view/template_cache',
 ));
 
-echo $twig->render('index.html', array('name' => 'Fabien'));
+//echo $twig->render('index.html', array('name' => 'Fabien'));
 
 $upload_dir = wp_upload_dir();
 $import_dir  = $upload_dir['basedir']."/import_temp/";
