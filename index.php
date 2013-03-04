@@ -26,15 +26,17 @@
 // Define constants and globals for main plugin stuff:
 define('DCSVI_PREFIX', 'dcsvi_prefix_');
 define('DCSVI_PLUGIN_DIR_PATH', plugin_dir_path(__FILE__) );
-global $data_rows, $headers, $default_fields, $wpdb, $keys, $delim;
+global $data_rows, $headers, $default_fields, $wpdb, $keys, $delimiter;
 $data_rows = array();
 $headers = array();
 
 // HTML Template library:
 require_once DCSVI_PLUGIN_DIR_PATH . '/library/Twig/Autoloader.php';
 Twig_Autoloader::register();
-$template_loader = new Twig_Loader_Filesystem( DCSVI_PLUGIN_DIR_PATH. '/view/template' );
-$twig = new Twig_Environment($template_loader, array('cache' => '/view/template_cache'));
+$html_template_directory = DCSVI_PLUGIN_DIR_PATH . '/view/template';
+$html_template_cache_directory = DCSVI_PLUGIN_DIR_PATH . '/view/template_cache';
+$template_loader = new Twig_Loader_Filesystem( $html_template_directory );
+$twig = new Twig_Environment($template_loader, array('cache' => $html_template_cache_directory));
 
 
 //echo $twig->render('index.html', array('name' => 'Fabien'));
@@ -46,8 +48,13 @@ if (!is_dir($import_dir)) {
 	wp_mkdir_p($import_dir);
 }
 
+// Set up folder for HTML Tempalte cache:
+if (!is_dir($html_template_cache_directory)) {
+	wp_mkdir_p($html_template_cache_directory);
+}
+
 // Set the delimiter:
-$delim = empty($_POST['delim']) ? '' : $_POST['delim'];
+$delimiter = empty($_POST['delim']) ? '' : $_POST['delim'];
 
 // Set a limit for max number of allowable post meta fileds:
 $limit = (int) apply_filters( 'postmeta_form_limit', 30 );
@@ -100,13 +107,13 @@ function description() {
 }
 
 // 
-function get_csv_file_data($file,$delim) {
+function get_csv_file_data($file,$delimiter) {
 	//
 	ini_set('auto_detect_line_endings', true);
-	global $data_rows, $headers, $delim;
+	global $data_rows, $headers, $delimiter;
 	$counter = 0;
 	$resource = fopen($file, 'r');
-	while ($keys = fgetcsv($resource,'',$delim,'"')) {
+	while ($keys = fgetcsv($resource,'',$delimiter,'"')) {
 		if ($counter == 0) {
 			$headers = $keys;
 		} else {
@@ -140,14 +147,16 @@ function fileDelete($filepath,$filename) {
 
 // Map the fields and upload data:
 function upload_csv_file() {
-	global $headers, $data_rows, $default_fields, $keys, $custom_array, $delim, $twig;
+	global $headers, $data_rows, $default_fields, $keys, $custom_array, $delimiter, $twig;
 
 	$upload_dir = wp_upload_dir();
 	$import_dir  = $upload_dir['basedir'] . '/import_temp/';
 	$custom_array = array();
+
+	$post_as_status = isset($_POST['status']) ? $_POST['status'] : "draft";
 	
 	if (isset($_POST['Import'])) { // File has been submitted for import:
-		get_csv_file_data($_FILES['csv_import']['tmp_name'],$delim);
+		get_csv_file_data($_FILES['csv_import']['tmp_name'],$delimiter);
 		move_file();
 		
 		if ( count($headers)>=1 &&  count($data_rows)>=1 ) { 
@@ -156,14 +165,19 @@ function upload_csv_file() {
 			// Show HTML template for mapping fields.
 			echo $twig->render('admin-import-map.html', 
 				array(
-					'opt-draft' => $opt_draft,
-					'post-types' => get_post_types(),
+					'debug' => TRUE,
+					'post_as_status' => $post_as_status,
+					'draft_checked' => ($post_as_status == 'draft') ? TRUE : FALSE,
+					'post_types' => get_post_types(),
 					'headers' => $headers,
-					'previous-upload-file' => $_FILES['csv_import']['name'],
-					'default-fields-count' => count($default_fields)+2,
-					'headers-count' => count($headers),
-					'default-fields' => $default_fields,
-					'result' => description()
+					'defaults' => $default_fields,
+					'previousuploadfile' => $_FILES['csv_import']['name'],
+					'defaultfieldscount' => count($default_fields)+2,
+					'header-count' => count($headers),
+					'default-count' => count($default_fields),
+					'result' => description(),
+					'deliminator' => $delimiter,
+					'header-array' => $header_array
 					));
 
 		} else { // File appears to have less than one row or less than one field:
@@ -185,7 +199,7 @@ function upload_csv_file() {
 	} elseif (isset($_POST['post_csv'])) { // File has been uploaded and fields have been mapped, start importing the file into posts and meta:
 		$upload_dir = wp_upload_dir();
 		$dir  = $upload_dir['basedir']."/import_temp/";
-		get_csv_file_data($dir.$_POST['filename'],$delim);
+		get_csv_file_data($dir.$_POST['filename'],$delimiter);
 		foreach ($_POST as $postkey=>$postvalue) {
 			if ($postvalue != '-- Select --') {
 				$ret_array[$postkey]=$postvalue;
