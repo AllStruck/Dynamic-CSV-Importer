@@ -154,7 +154,7 @@ function upload_csv_file() {
 			// File has at least one row and at least one field.
 			
 			// Show HTML template for mapping fields.
-			echo $twig->render('view/template/admin-import-map.html', 
+			echo $twig->render('admin-import-map.html', 
 				array(
 					'opt-draft' => $opt_draft,
 					'post-types' => get_post_types(),
