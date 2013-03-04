@@ -34,7 +34,7 @@ $headers = array();
 require_once DCSVI_PLUGIN_DIR_PATH . '/library/Twig/Autoloader.php';
 Twig_Autoloader::register();
 $template_loader = new Twig_Loader_Filesystem( DCSVI_PLUGIN_DIR_PATH. '/view/template' );
-$twig = new Twig_Environment($loader, array('cache' => '/view/template_cache'));
+$twig = new Twig_Environment($template_loader, array('cache' => '/view/template_cache'));
 
 
 //echo $twig->render('index.html', array('name' => 'Fabien'));
