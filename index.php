@@ -140,7 +140,7 @@ function fileDelete($filepath,$filename) {
 
 // Map the fields and upload data:
 function upload_csv_file() {
-	global $headers, $data_rows, $default_fields, $keys, $custom_array, $delim;
+	global $headers, $data_rows, $default_fields, $keys, $custom_array, $delim, $twig;
 
 	$upload_dir = wp_upload_dir();
 	$import_dir  = $upload_dir['basedir'] . '/import_temp/';
