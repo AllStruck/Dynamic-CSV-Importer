@@ -5,7 +5,7 @@
 						<input name="_csv_importer_import_as_draft" type="hidden" value="publish" />
 						<label>
 							<input name="csv_importer_import_as_draft" type="checkbox" 
-							{% 'draft' is opt-draft ? 'checked="checked"' : '' %} 
+							{% opt-draft is 'draft' ? 'checked="checked"' : '' %} 
 							value="draft" />
 							Import as drafts
 						</label>
