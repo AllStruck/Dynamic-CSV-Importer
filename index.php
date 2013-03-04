@@ -51,7 +51,8 @@ $delim = empty($_POST['delim']) ? '' : $_POST['delim'];
 
 // Set a limit for max number of allowable post meta fileds:
 $limit = (int) apply_filters( 'postmeta_form_limit', 30 );
-//
+
+// Get key values for existing meta (custom fields):
 $keys = $wpdb->get_col( 
 	"SELECT meta_key
 	FROM $wpdb->postmeta
@@ -81,8 +82,9 @@ function dynamic_csv_importer() {
 	add_menu_page('CSV importer settings', 'CSV Importer', 'manage_options',  
 		'upload_csv_file', 'upload_csv_file');
 }  
+add_action("admin_menu", "dynamic_csv_importer");  
 
-
+// Add JavaScript file to head:
 function LoadWpScript() {
 	wp_register_script('dynamic_csv_importer_scripts', site_url()."/wp-content/plugins/wp-ultimate-csv-importer/dynamic_csv_importer.js", array("jquery"));
 	wp_enqueue_script('dynamic_csv_importer_scripts');
@@ -90,7 +92,6 @@ function LoadWpScript() {
 add_action('admin_enqueue_scripts', 'LoadWpScript');
 
 
-add_action("admin_menu", "dynamic_csv_importer");  
 
 // Plugin description details
 function description() {
