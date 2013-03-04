@@ -24,8 +24,8 @@
 */
 
 // Define constants and globals for main plugin stuff:
-define(DCSVI_PREFIX, 'dcsvi_prefix_');
-define(DCSVI_PLUGIN_DIR_PATH, plugin_dir_path(__FILE__) );
+define('DCSVI_PREFIX', 'dcsvi_prefix_');
+define('DCSVI_PLUGIN_DIR_PATH', plugin_dir_path(__FILE__) );
 global $data_rows, $headers, $default_fields, $wpdb, $keys, $delim;
 $data_rows = array();
 $headers = array();
@@ -152,6 +152,7 @@ function upload_csv_file() {
 		
 		if ( count($headers)>=1 &&  count($data_rows)>=1 ) { 
 			// File has at least one row and at least one field.
+			
 			// Show HTML template for mapping fields.
 			echo $twig->render('view/template/admin-import-map.html', 
 				array(
@@ -164,7 +165,6 @@ function upload_csv_file() {
 					'default-fields' => $default_fields,
 					'result' => description()
 					));
-
 
 		} else { // File appears to have less than one row or less than one field:
 			?>
