@@ -147,7 +147,7 @@ function upload_csv_file() {
 	$custom_array = array();
 	
 	if (isset($_POST['Import'])) { // File has been submitted for import:
-		csv_file_data($_FILES['csv_import']['tmp_name'],$delim);
+		get_csv_file_data($_FILES['csv_import']['tmp_name'],$delim);
 		move_file();
 		
 		if ( count($headers)>=1 &&  count($data_rows)>=1 ) { 
@@ -185,7 +185,7 @@ function upload_csv_file() {
 	} elseif (isset($_POST['post_csv'])) { // File has been uploaded and fields have been mapped, start importing the file into posts and meta:
 		$upload_dir = wp_upload_dir();
 		$dir  = $upload_dir['basedir']."/import_temp/";
-		csv_file_data($dir.$_POST['filename'],$delim);
+		get_csv_file_data($dir.$_POST['filename'],$delim);
 		foreach ($_POST as $postkey=>$postvalue) {
 			if ($postvalue != '-- Select --') {
 				$ret_array[$postkey]=$postvalue;
