@@ -1,0 +1,56 @@
+			<div id="dcsvi-main-wrapper">
+				<form class="add:the-list: validate" method="post" onsubmit="return import_csv()	;">
+					<h3>Import Data Configuration</h3>
+					<div style="margin-top:30px;">
+						<input name="_csv_importer_import_as_draft" type="hidden" value="publish" />
+						<label>
+							<input name="csv_importer_import_as_draft" type="checkbox" 
+							{% 'draft' is opt-draft ? 'checked="checked"' : '' %} 
+							value="draft" />
+							Import as drafts
+						</label>
+						<label>Select Post Type</label>
+						<select name='csv_importer_cat'>
+						{% for type in post_types %}
+							<option id="{{type}}" name="{{type}}">{{type}}</option>
+						{% endfor %}
+					</select>
+					<h3>Mapping the Fields</h3>
+					<div id="dcsvi-display-area">
+						{% set default-count = count(defaults)+2 %}
+						{% set header-count = count(headers) %}
+						<input type="hidden" id="h1" name="h1" value="{{default-count}}"/>
+						<input type="hidden" id="h2" name="h2" value="{{header-count}}"/>
+						<input type="hidden" id="delim" name="delim" value="{{deliminator}}" />
+						<input type="hidden" id="header_array" name="header_array" value="{{header-array}}" />
+						<div id="dcsvi-mapping-form">
+							{% set count = 0 %}
+							{% for header in headers %}
+								{$ set found_fields_options = '' %}
+								{% for default in defaults %}
+									{% set found_fields_options .= default.key %}
+								{$ endfor %}
+									<tr>
+										<td>
+											<label>{{default.value}}</label>
+										</td>
+										<td>
+											<select name="mapping{{count}}" id="mapping{{count}}" class ='uiButton' onchange="addcustomfield(this.value,{{count}});">
+												<option id="select" name="select">-- Select --</option>
+												{{found_fields_options}}
+												<option value="add_custom$count">Add Custom Field</option>
+											</select>
+											<input type="text" id="textbox{{count}}" name="textbox{{count}}" style="display:none;"/>
+										</td>
+									</tr>
+								{% set count = count + 1 %}
+							{% endfor %}
+						</div>
+					</div>
+					<input type='hidden' name='filename' id='filename' value="{{previous-upload-file}}" />
+					<input type='submit' name= 'post_csv' id='post_csv' value='Import' />
+				</form>
+			</div>
+			<div id="results">
+				{{ dump(result) }}
+			</div>

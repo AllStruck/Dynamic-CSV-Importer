@@ -23,14 +23,19 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+// Define constants and globals for main plugin stuff:
 define(DCSVI_PREFIX, 'dcsvi_prefix_');
 define(DCSVI_PLUGIN_DIR_PATH, plugin_dir_path(__FILE__) );
+global $data_rows, $headers, $default_fields, $wpdb, $keys, $delim;
+$data_rows = array();
+$headers = array();
 
 // HTML Template library:
 require_once DCSVI_PLUGIN_DIR_PATH . '/library/Twig/Autoloader.php';
 Twig_Autoloader::register();
 $template_loader = new Twig_Loader_Filesystem( DCSVI_PLUGIN_DIR_PATH. '/view/template' );
 $twig = new Twig_Environment($loader, array('cache' => '/view/template_cache'));
+
 
 //echo $twig->render('index.html', array('name' => 'Fabien'));
 
@@ -40,11 +45,6 @@ $import_dir  = $upload_dir['basedir']."/import_temp/";
 if (!is_dir($import_dir)) {
 	wp_mkdir_p($import_dir);
 }
-
-// Set up some helper variables:
-global $data_rows, $headers, $defaults, $wpdb, $keys, $delim;
-$data_rows = array();
-$headers = array();
 
 // Set the delimiter:
 $delim = empty($_POST['delim']) ? '' : $_POST['delim'];
@@ -62,7 +62,7 @@ $keys = $wpdb->get_col(
 	LIMIT $limit"
 	);
 // Build a list of default WordPress fields with empty default mapping:
-$defaults = array(
+$default_fields = array(
 	'post_title'      => null,
 	'post_content'    => null,
 	'post_excerpt'    => null,
@@ -74,14 +74,14 @@ $defaults = array(
 	'post_parent'     => 0,
 	);
 foreach($keys as $val) {
-	$defaults[$val]=$val;
+	$default_fields[$val]=$val;
 }
 // Admin menu settings
-function dynamic_csv_importer() {  
+function dynamic_csv_importer() {
 	add_submenu_page( 'tools.php', 'Dynamic CSV Importer', 'CSV Importer', 'manage_options', 'dynamic_csv_importer', 'upload_csv_file');
 	add_menu_page('CSV importer settings', 'CSV Importer', 'manage_options',  
 		'upload_csv_file', 'upload_csv_file');
-}  
+}
 add_action("admin_menu", "dynamic_csv_importer");  
 
 // Add JavaScript file to head:
@@ -93,27 +93,26 @@ add_action('admin_enqueue_scripts', 'LoadWpScript');
 
 
 
-// Plugin description details
 function description() {
+	// Return description of plugin:
 	_e('<p>Dynamic CSV Importer will add new posts, pages, or custom posts of a custom type from a CSV file. You do not need to change the CSV file; select the CSV file and map each field to the post field (custom meta fields are supported).</p> 
 		<p>');
 }
 
-// CSV File Reader
-function csv_file_data($file,$delim) {
+// 
+function get_csv_file_data($file,$delim) {
+	//
 	ini_set('auto_detect_line_endings', true);
-	global $data_rows;
-	global $headers;
-	global $delim;
-	$c = 0;
+	global $data_rows, $headers, $delim;
+	$counter = 0;
 	$resource = fopen($file, 'r');
 	while ($keys = fgetcsv($resource,'',$delim,'"')) {
-		if ($c == 0) {
+		if ($counter == 0) {
 			$headers = $keys;
 		} else {
 			array_push($data_rows, $keys);
 		}
-		$c ++;
+		$counter++;
 	}
 	fclose($resource);
 	ini_set('auto_detect_line_endings', false);
@@ -141,7 +140,7 @@ function fileDelete($filepath,$filename) {
 
 // Map the fields and upload data:
 function upload_csv_file() {
-	global $headers, $data_rows, $defaults, $keys, $custom_array, $delim;
+	global $headers, $data_rows, $default_fields, $keys, $custom_array, $delim;
 
 	$upload_dir = wp_upload_dir();
 	$import_dir  = $upload_dir['basedir'] . '/import_temp/';
@@ -150,70 +149,23 @@ function upload_csv_file() {
 	if (isset($_POST['Import'])) { // File has been submitted for import:
 		csv_file_data($_FILES['csv_import']['tmp_name'],$delim);
 		move_file();
-		if ( count($headers)>=1 &&  count($data_rows)>=1 ) { // File has at least one row and at least one field:
-			?>
-			<div style="float:left;min-width:45%;">
-				<form class="add:the-list: validate" method="post" onsubmit="return import_csv()	;">
-					<h3>Import Data Configuration</h3>
-					<div style="margin-top:30px;">
-						<input name="_csv_importer_import_as_draft" type="hidden" value="publish" />
-						<label><input name="csv_importer_import_as_draft" type="checkbox" <?php if ('draft' == $opt_draft) { echo 'checked="checked"'; } ?> value="draft" /> Import as drafts </label>&nbsp;&nbsp;
-					<label> Select Post Type </label>&nbsp;&nbsp;
-					<select name='csv_importer_cat'>
-						<?php
-						$post_types=get_post_types();
-						foreach ($post_types as $key => $value) {
-							if (($value!='featured_image') && ($value!='revision') && ($value!='nav_menu_item')) {
-								?>
-								<option id="<?php echo($value);?>" name="<?php echo($value);?>"> <?php echo($value);?> </option>
-								<?php  
-							}
-						}
-						?>
-					</select>
-					<h3>Mapping the Fields</h3>
-					<div id='display_area'>
-						<?php $cnt = count($defaults)+2; $cnt1 =count($headers); ?>
-						<input type="hidden" id="h1" name="h1" value="<?php echo $cnt; ?>"/>
-						<input type="hidden" id="h2" name="h2" value="<?php echo $cnt1; ?>"/>
-						<input type="hidden" id="delim" name="delim" value="<?php echo $_POST['delim']; ?>" />
-						<input type="hidden" id="header_array" name="header_array" value="<?php print_r($headers);?>" />
-						<table style="font-size:12px;">
-							<?php
-							$count = 0;
-							foreach ($headers as $key=>$value) {
-								$found_fields_options = '';
-								foreach ($defaults as $key=>$value) {
-									$found_fields_options .= "<option value='$key'>$key</option>\n";
-								}
-								echo <<<STOPECHO
-									<tr>
-										<td>
-											<label>$value</label>
-										</td>
-										<td>
-											<select  name="mapping$count" id="mapping$count" class ='uiButton' onchange="addcustomfield(this.value,$count);">
-												<option id="select" name="select">-- Select --</option>
-												$found_fields_options
-												<option value="add_custom$count">Add Custom Field</option>
-											</select>
-											<input type="text" id="textbox$count" name="textbox$count" style="display:none;"/>
-										</td>
-									</tr>
-STOPECHO;
-								$count++;
-							}
-							?>
-						</table>
-					</div>
-					<input type='hidden' name='filename' id='filename' value="<?php echo($_FILES['csv_import']['name']);?>" />
-					<input type='submit' name= 'post_csv' id='post_csv' value='Import' />
-				</form>
-			</div>
-			<div style="min-width:45%;">
-				<?php $result = description(); print_r($result); ?>
-			</div>
-			<?php
+		
+		if ( count($headers)>=1 &&  count($data_rows)>=1 ) { 
+			// File has at least one row and at least one field.
+			// Show HTML template for mapping fields.
+			echo $twig->render('view/template/admin-import-map.html', 
+				array(
+					'opt-draft' => $opt_draft,
+					'post-types' => get_post_types(),
+					'headers' => $headers,
+					'previous-upload-file' => $_FILES['csv_import']['name'],
+					'default-fields-count' => count($default_fields)+2,
+					'headers-count' => count($headers),
+					'default-fields' => $default_fields,
+					'result' => description()
+					));
+
+
 		} else { // File appears to have less than one row or less than one field:
 			?>
 			<div style="font-size:16px;margin-left:20px;">Your CSV file was not processed. It may contain the wrong delimiter, make sure you picked the correct one.
@@ -257,23 +209,23 @@ STOPECHO;
 					}
 				}
 			}
-			foreach ($new_post as $ckey => $cval) {
-				if ($ckey!='post_category' && $ckey!='post_tag' && $ckey!='featured_image') {
-					if (array_key_exists($ckey,$custom_array)) {
-						$darray[$ckey]=$new_post[$ckey];
+			foreach ($new_post as $post_key => $cval) {
+				if ($post_key!='post_category' && $post_key!='post_tag' && $post_key!='featured_image') {
+					if (array_key_exists($post_key,$custom_array)) {
+						$darray[$post_key]=$new_post[$post_key];
 				   	} else {
-				   		$data_array[$ckey]=$new_post[$ckey];
+				   		$data_array[$post_key]=$new_post[$post_key];
 				   	}
    				} else {
-			   		if ($ckey == 'post_tag') {
-			   			$tags[$ckey]=$new_post[$ckey];
+			   		if ($post_key == 'post_tag') {
+			   			$tags[$post_key]=$new_post[$post_key];
    					}
-   					if ($ckey == 'post_category') {
-   						$categories[$ckey]=$new_post[$ckey];
+   					if ($post_key == 'post_category') {
+   						$categories[$post_key]=$new_post[$post_key];
    					}
-					if ($ckey == 'featured_image') {
-						$file_url=$filetype[$ckey]=$new_post[$ckey];
-						$file_type = explode('.',$filetype[$ckey]);
+					if ($post_key == 'featured_image') {
+						$file_url=$filetype[$post_key]=$new_post[$post_key];
+						$file_type = explode('.',$filetype[$post_key]);
 						$count = count($file_type);
 						$type= $file_type[$count-1];
 						if ($type == 'png') {
