@@ -125,7 +125,7 @@ function move_file() {
 	if ($_FILES['csv_import']['error'] == 0) {
 		$tmp_name = $_FILES['csv_import']['tmp_name'];
 		$name = $_FILES['csv_import']['name'];
-		move_uploaded_file($tmp_name, '$uploads_dir/$name');
+		move_uploaded_file($tmp_name, "$uploads_dir/$name");
 	}
 }
 
