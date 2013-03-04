@@ -1,33 +1,47 @@
 
 // Function for add customfield
 
-function addcustomfield(myval,selected_id){
-	var a = document.getElementById('h1').value;
-	var aa = document.getElementById('h2').value;
-	var selected_value;// added at version 1.0.2 by fredrick
-	for(var i=0;i<aa;i++){ 
-		var b = document.getElementById('mapping'+i).value;
-		if(b=='add_custom'+i){
-			document.getElementById('textbox'+i).style.display="";
-		}
-		else{
-			document.getElementById('textbox'+i).style.display="none";
-		}
-	}
-	// Code Added at version 1.0.2 by fredrick
- 	var header_count = document.getElementById('h2').value;
-	for(var j=0;j<header_count;j++){
-		var selected_value = document.getElementById('mapping'+j);
-		var value1 = selected_value.options[selected_value.selectedIndex].value;
-		if(j != selected_id){
-			if(myval == value1 && myval != '-- Select --'){
-				var selected_dropdown = document.getElementById('mapping'+selected_id);
-				selected_dropdown.selectedIndex = '-- Select --';
-				alert(myval+' is already selected!');
-			}
-		}
+function toggle_custom_field(value, select_id, input_id) {
+	var selected_element = document.getElementById(select_id);
+		custom_input = document.getElementById(input_id);
+	if (selected_element.options[selected_element.selectedIndex].text == 'Add Custom Field' && custom_input.style.display=="none") {
+		custom_input.style.display=""
+	} else {
+		custom_input.style.display="none"
 	}
 }
+
+// function addcustomfield(myval,selected_id){
+// 	var a = document.getElementById('h1').value;
+// 	var aa = document.getElementById('h2').value;
+// 	var selected_value;// added at version 1.0.2 by fredrick
+// 	for(var i=0;i<aa;i++){ 
+// 		var b = document.getElementById('mapping-'+i).value;
+// Uncaught TypeError: Cannot read property 'value' of null
+// 		if(b=='add_custom-'+i){
+// 			document.getElementById('textbox-'+i).style.display="";
+// 		}
+// 		else{
+// 			document.getElementById('textbox-'+i).style.display="none";
+// Uncaught TypeError: Cannot read property 'style' of null
+// 		}
+// 	}
+//  	var header_count = document.getElementById('h2').value;
+// 	for(var j=0;j<header_count;j++){
+// 		var selected_value = document.getElementById('mapping-'+j);
+// 		var value1 = selected_value.options[selected_value.selectedIndex].value;
+// Uncaught TypeError: Cannot read property 'options' of null
+// 		if(j != selected_id){
+// 			if(myval == value1 && myval != '-- Select --'){
+// 				var selected_dropdown = document.getElementById('mapping-'+selected_id);
+// 				selected_dropdown.selectedIndex = '-- Select --';
+// Uncaught TypeError: Cannot set property 'selectedIndex' of null
+// Uncaught TypeError: Cannot set property 'selectedIndex' of null
+// 				alert(myval+' is already selected!');
+// 			}
+// 		}
+// 	}
+// }
 
 // Function for check file exist
 
@@ -41,8 +55,6 @@ function file_exist(){
 	}
 }
 
-// Code added at version 1.0.2 by fredrick
-
 // Function for import csv
 
 function import_csv(){
@@ -51,7 +63,7 @@ function import_csv(){
 	var val1,val2;
 	val1 = val2 = 'Off';
 	for(var i=0;i<header_count;i++){
-		var e = document.getElementById("mapping"+i);
+		var e = document.getElementById("mapping-"+i);
 		var value = e.options[e.selectedIndex].value;
 		array[i] = value;
 	}

@@ -11,33 +11,37 @@
 						<label>Select Post Type</label>
 						<select name='csv_importer_cat'>
 						{% for type in post_types %}
-							<option id="{{type}}" name="{{type}}">{{type}}</option>
+							{% set typename = type.labels.singular_name %}
+							<option id="{{typename}}" name="{{typename}}">{{typename}}</option>
 						{% endfor %}
 						</select>
-						<h3>Mapping the Fields</h3>
+						<h3>Mapping the Field</h3>
 						<div id="dcsvi-display-area">
-							<input type="hidden" id="h1" name="h1" value="{{default-count}}"/>
-							<input type="hidden" id="h2" name="h2" value="{{header-count}}"/>
+							<input type="hidden" id="h1" name="h1" value="{{default_count}}"/>
+							<input type="hidden" id="h2" name="h2" value="{{header_count}}"/>
 							<input type="hidden" id="delim" name="delim" value="{{deliminator}}" />
 							<input type="hidden" id="header_array" name="header_array" value="{{header-array}}" />
 							<div id="dcsvi-mapping-form">
-								{% for header in headers %}
-									{% set mappingindex = header.key %}
-									<tr>
-										<td>
-											<label>{{default.value}}</label>
-										</td>
-										<td>
-											<select name="mapping-{{mappingindex}}" id="mapping-{{mappingindex}}" class ='uiButton' onchange="addcustomfield(this.value,{{mappingindex}});">
-												<option name="select">-- Select --</option>
-												{% for default in defaults %}
-													<option name="YESMAN" value="YESMAN">YESMAN</option>
-												{% endfor %}
-												<option value="add_custom-{{mappingindex}}">Add Custom Field</option>
-											</select>
-											<input type="text" id="textbox-{{mappingindex}}" name="textbox-{{mappingindex}}" style="display:none;"/>
-										</td>
-									</tr>
+								{% for row_number,row_name in headers %}
+									<div class="mapping-field-input-wrap">
+										{% set mappingindex = row_number %}
+										<tr>
+											<td>
+												<label for="mapping-{{mappingindex}}">{{row_name}}</label>
+											</td>
+											<td>
+												<select name="mapping-{{mappingindex}}" id="mapping-{{mappingindex}}" class ='uiButton' onchange="toggle_custom_field(this.value,this.getAttribute('name'), 'textbox-{{mappingindex}}');">
+													<option name="select">-- Select --</option>
+													{% for dkey,dval in defaults %}
+														{% set defaultname = dkey %}
+														<option name="{{defaultname}}" value="{{defaultname}}">{{defaultname}}</option>
+													{% endfor %}
+													<option value="add_custom-{{mappingindex}}">Add Custom Field</option>
+												</select>
+												<input type="text" id="textbox-{{mappingindex}}" name="textbox-{{mappingindex}}" style="display:none;"/>
+											</td>
+										</tr>
+									</div>
 								{% endfor %}
 							</div>
 						</div>
@@ -47,5 +51,5 @@
 				</form>
 			</div>
 			<div id="results">
-				{{result}}
+				{{results}}
 			</div>
