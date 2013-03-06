@@ -5,9 +5,9 @@ function toggle_custom_field(value, select_id, input_id) {
 	var selected_element = document.getElementById(select_id);
 		custom_input = document.getElementById(input_id);
 	if (selected_element.options[selected_element.selectedIndex].text == 'Add Custom Field' && custom_input.style.display=="none") {
-		custom_input.style.display=""
+		custom_input.style.display="visible";
 	} else {
-		custom_input.style.display="none"
+		custom_input.style.display="none";
 	}
 }
 
@@ -43,10 +43,8 @@ function toggle_custom_field(value, select_id, input_id) {
 // 	}
 // }
 
-// Function for check file exist
-
+// Check if CSV file exists:
 function file_exist(){
-
 	if(document.getElementById('csv_import').value==''){
 		return false;
 	}
@@ -56,7 +54,6 @@ function file_exist(){
 }
 
 // Function for import csv
-
 function import_csv(){
 	var header_count = document.getElementById('h2').value;
 	var array = new Array();
