@@ -478,10 +478,95 @@ function add_new_post($post, $mapping) {
 }
 
 // Adds tags, categories, or other post meta:
-function dcsvi_add_post_meta() {
+function dcsvi_add_post($input_data) {
+	$post = array(
+	'ID' => $input_data[$input_data['ID_field']], 
+	'menu_order' => $input_data[$input_data['menu_order_field']], 
+	'comment_status' => $input_data[$input_data['comment_status_field']], 
+	'ping_status' => $input_data[$input_data['ping_status_field']], 
+	'pinged' => $input_data[$input_data['pinged_field']], 
+	'post_author' => $input_data[$input_data['post_author_field']], 
+	'post_category' => $input_data[$input_data['post_category_field']], 
+	'post_content' => $input_data[$input_data['post_content_field']], 
+	'post_date' => $input_data[$input_data['post_date_field']], 
+	'post_date_gmt' => $input_data[$input_data['post_date_gmt_field']], 
+	'post_excerpt' => $input_data[$input_data['post_excerpt_field']], 
+	'post_name' => $input_data[$input_data['post_name_field']], 
+	'post_parent' => $input_data[$input_data['post_parent_field']], 
+	'post_password' => $input_data[$input_data['post_password_field']], 
+	'post_status' => $input_data[$input_data['post_status_field']], 
+	'post_title' => $input_data[$input_data['post_title_field']], 
+	'post_type' => $input_data[$input_data['post_type_field']], 
+	'tags_input' => $input_data[$input_data['tags_input_field']], 
+	'to_ping' => $input_data[$input_data['to_ping_field']], 
+	'tax_input' => $input_data[$input_data['tax_input_field']]);
 
+	if ($wp_insert == wp_insert_post( $post, $wp_error = TRUE )) {
+		return TRUE;
+	}
+	if ($error) {
+		return $wp_insert;
+	}
+	return FALSE;
 }
 
-function job_schedule_handler() {
+function dcsvi_save_post_data_to_options($input_data, $job_id) {
+	// Save all sanitized data into a WP Option:
+	if (!get_option("dcsvi_post_data_$job_id")) {
+		add_option( "dcsvi_post_data_$job_id", $input_data, '', 'no');
+		return TRUE;
+	return FALSE;
+}
 
+function dcsvi_new_job($posts) {
+	$new_job_id = uniqid();
+	dcsvi_save_post_data_to_options($posts, $new_job_id);
+	wp_schedule_event( time(), 'five_seconds', 'dcsvi_job_scheduler', array($new_job_id) );
+	if (!get_option("dcsvi_running_job_$new_job_id")) {
+		add_option( "dcsvi_running_job_$new_job_id", 'Started...', '', 'no');
+	}
+}
+
+function dcsvi_complete_job($job_id) {
+	if (!get_option("dcsvi_running_job_$job_id")) {
+		add_option( "dcsvi_running_job_$job_id", 'Started...', '', 'no');
+	}
+}
+
+function dcsvi_abort_job($job_id, $message) {
+}
+
+function dcsvi_job_scheduler($job_id) {
+	$completed = (array)get_option("dcsvi_job_completed_$job_id");
+	$active = (array)get_option("dcsvi_job_active_$job_id");
+
+	foreach ($active as $row) {
+		if (get_post($row)) {
+			pop($active[$row->index]);
+			push($row, $completed);
+		} else {
+			dcsvi_add_post($row);
+
+		}
+	}
+
+	if (!get_option( "dcsvi_job_status_$job_id", $default = false )) {
+		add_option( "dcsvi_job_status_$job_id", 'Currently working on ', '', 'no' );
+	} else {
+		update_option( "dcsvi_job_status_$job_id", '' );
+	}
+	if (!get_option( "dcsvi_job_part_$job_id", $default = false )) {
+		add_option( "dcsvi_job_part_$job_id", "", '', 'no' );
+	}
+}
+
+// Add "five_seconds" as a time supported by WP-Cron:
+add_filter( 'cron_schedules', 'cron_add_five_seconds' );
+function dcsvi_cron_add_five_seconds( $schedules ) {
+	// Adds once weekly to the existing schedules.
+	$schedules['five_seconds'] = array(
+		'interval' => 5,
+		'display' => __( 'Every Five Seconds' )
+	);
+	return $schedules;
 }
