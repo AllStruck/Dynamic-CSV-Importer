@@ -511,10 +511,10 @@ function dcsvi_add_post($input_data) {
 }
 
 function dcsvi_save_post_data_to_options($input_data, $job_id) {
-	// Save all sanitized data into a WP Option:
 	if (!get_option("dcsvi_post_data_$job_id")) {
-		add_option( "dcsvi_post_data_$job_id", $input_data, '', 'no');
+		add_option( "dcsvi_post_data_$job_id", $input_data, '', 'no' );
 		return TRUE;
+	}
 	return FALSE;
 }
 
@@ -546,7 +546,6 @@ function dcsvi_job_scheduler($job_id) {
 			push($row, $completed);
 		} else {
 			dcsvi_add_post($row);
-
 		}
 	}
 
