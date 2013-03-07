@@ -342,7 +342,6 @@ function upload_csv_file() {
 					</p>
 					<p class="submit"><input type="submit" class="button" name="Import" value="Import" /></p>
 				</form>
-			</div>
 			<div style="min-width:45%;">
 				<?php $result = description(); print_r($result); ?>
 			</div>
