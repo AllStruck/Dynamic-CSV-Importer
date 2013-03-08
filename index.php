@@ -165,7 +165,7 @@ function upload_dcsvi_file() {
 	$post_as_status = isset($_POST['status']) ? $_POST['status'] : "draft";
 	
 	if (isset($_POST['Import'])) { // File has been submitted for import:
-		dcsvi_get_dcsvi_file_data($_FILES['dcsvi_import']['tmp_name'],$delimiter);
+		list($headers, $data_rows, $delimiter) = dcsvi_get_dcsvi_file_data($_FILES['dcsvi_import']['tmp_name'],$delimiter);
 		move_file();
 		
 		if ( count($headers)>=1 &&  count($data_rows)>=1 ) { 
