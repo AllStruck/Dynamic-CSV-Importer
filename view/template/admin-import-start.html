@@ -10,8 +10,8 @@
 					</p>
 
 					<p>
-						<label for="dcsvi-importer-cat">{{post_type_label}}</label>
-						<select name="dcsvi-importer-cat">
+						<label for="dcsvi-post-type">{{post_type_label}}</label>
+						<select name="dcsvi-post-type">
 							{% for type in post_types %}
 								{% set typename = type.labels.singular_name %}
 								<option id="{{typename}}" name="{{typename}}">{{typename}}</option>
