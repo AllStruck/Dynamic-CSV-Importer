@@ -341,7 +341,9 @@ function upload_dcsvi_file() {
 				'post_type_label' => __('Post Type'),
 				'upload_file_label' => __('Upload File'),
 				'post_status_label' => __('Post Status'),
-				'post_status_list' => array('Published', 'Draft', ''),
+				'post_status_list' => array(
+					'Published' => 'published' , 
+					'Draft' => 'draft'),
 				'post_as_status' => $post_as_status,
 				'draft_checked' => ($post_as_status == 'draft') ? TRUE : FALSE,
 				'post_types' => get_post_types(array('public' => TRUE), 'objects'),

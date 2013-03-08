@@ -11,7 +11,7 @@
 
 					<p>
 						<label>{{post_type_label}}</label>
-						<select name='dcsvi_importer_cat'>
+						<select name="dcsvi_importer_cat">
 							{% for type in post_types %}
 								{% set typename = type.labels.singular_name %}
 								<option id="{{typename}}" name="{{typename}}">{{typename}}</option>
@@ -22,7 +22,7 @@
 
 					<p>
 						<label for="post_status">{{post_status_label}}</label>
-						<select name='post_status'>
+						<select name="post_status">
 							{% for status in post_status_list %}
 								{% set statusname = status.labels.singular_name %}
 								<option id="{{statusname}}" name="{{statusname}}">{{statusname}}</option>
@@ -32,7 +32,7 @@
 					</p>
 
 					<p>
-						<label>{{delimiter_label}}</label>
+						<label for="delim">{{delimiter_label}}</label>
 						<select name="delim" id="delim">
 							<option value=",">,</option>
 							<option value=";">;</option>
