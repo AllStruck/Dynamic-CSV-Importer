@@ -21,11 +21,10 @@
 					</p>
 
 					<p>
-						<label for="post_status">{{post_status_label}}</label>
-						<select name="post_status">
-							{% for status,status_id in post_status_list %}
-								{% set statusname = status %}
-								<option id="{{statusname}}" name="{{statusname}}" value="{{statusid}}">{{statusname}}</option>
+						<label for="post-status">{{post_status_label}}</label>
+						<select name="post-status">
+							{% for status_name,status_id in post_status_list %}
+								<option id="{{status_name}}" name="{{status_name}}" value="{{statusid}}">{{status_name}}</option>
 							{% endfor %}
 							<option id="from-file" name="from-file">From file...</option>
 						</select>
