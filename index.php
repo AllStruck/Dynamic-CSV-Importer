@@ -87,17 +87,17 @@ foreach($keys as $val) {
 }
 // Add menu and interface to back-end (admin):
 function dcsvi_add_admin_interface() {
-	add_submenu_page( 'tools.php', 'Dynamic CSV Importer', 'CSV Importer', 'manage_options', 'dynamic_csv_importer', 'upload_csv_file');
+	add_submenu_page( 'tools.php', 'Dynamic CSV Importer', 'CSV Importer', 'manage_options', 'dynamic_dcsvi_importer', 'upload_dcsvi_file');
 	add_menu_page('CSV importer settings', 'CSV Importer', 'manage_options',  
-		'upload_csv_file', 'upload_csv_file');
+		'upload_dcsvi_file', 'upload_dcsvi_file');
 }
 add_action("admin_menu", "dcsvi_add_admin_interface");
 
 // Add JavaScript file to head:
 function LoadWpScript() {
-	wp_deregister_script( 'dynamic_csv_importer_scripts' );
-	wp_register_script('dynamic_csv_importer_scripts', DCSVI_PLUGIN_DIR_URL . '/dynamic_csv_importer.js', array('jquery'));
-	wp_enqueue_script('dynamic_csv_importer_scripts');
+	wp_deregister_script( 'dynamic_dcsvi_importer_scripts' );
+	wp_register_script('dynamic_dcsvi_importer_scripts', DCSVI_PLUGIN_DIR_URL . '/dynamic_dcsvi_importer.js', array('jquery'));
+	wp_enqueue_script('dynamic_dcsvi_importer_scripts');
 
 }
 add_action('admin_enqueue_scripts', 'LoadWpScript');
@@ -110,11 +110,13 @@ function description() {
 }
 
 // Get all data from the CSV and set $headers to first line (keys):
-function get_csv_file_data($file,$delimiter) {
+function dcsvi_get_dcsvi_file_data($file,$delimiter) {
 	// Set this to avoid missing lines on files with bad carriage return encoding:
 	ini_set('auto_detect_line_endings', true);
 
-	global $data_rows, $headers, $delimiter;
+	$data_rows = array();
+	$headers = array();
+
 	$resource = fopen($file, 'r');
 
 	// Run through every row of CSV and add first row to $headers, all others to $data_rows:
@@ -128,15 +130,17 @@ function get_csv_file_data($file,$delimiter) {
 		}
 	}
 	fclose($resource);
+
+	return array($headers, $data_rows, $delimiter);
 }
 
 // Move file
 function move_file() {
 	$upload_dir = wp_upload_dir();
 	$uploads_dir  = $upload_dir['basedir'] . '/import_temp/';
-	if ($_FILES['csv_import']['error'] == 0) {
-		$tmp_name = $_FILES['csv_import']['tmp_name'];
-		$name = $_FILES['csv_import']['name'];
+	if ($_FILES['dcsvi_import']['error'] == 0) {
+		$tmp_name = $_FILES['dcsvi_import']['tmp_name'];
+		$name = $_FILES['dcsvi_import']['name'];
 		move_uploaded_file($tmp_name, "$uploads_dir/$name");
 	}
 }
@@ -151,17 +155,17 @@ function fileDelete($filepath,$filename) {
 }
 
 // Map the fields and upload data:
-function upload_csv_file() {
-	global $headers, $data_rows, $default_fields, $keys, $custom_array, $delimiter, $twig;
+function upload_dcsvi_file() {
+	global $headers, $data_rows, $default_fields, $keys, $custom_fields, $delimiter, $twig;
 
 	$upload_dir = wp_upload_dir();
 	$import_dir  = $upload_dir['basedir'] . '/import_temp/';
-	$custom_array = array();
+	$custom_fields = array();
 
 	$post_as_status = isset($_POST['status']) ? $_POST['status'] : "draft";
 	
 	if (isset($_POST['Import'])) { // File has been submitted for import:
-		get_csv_file_data($_FILES['csv_import']['tmp_name'],$delimiter);
+		dcsvi_get_dcsvi_file_data($_FILES['dcsvi_import']['tmp_name'],$delimiter);
 		move_file();
 		
 		if ( count($headers)>=1 &&  count($data_rows)>=1 ) { 
@@ -177,13 +181,15 @@ function upload_csv_file() {
 					'post_types' => get_post_types(array('public' => TRUE), 'objects'),
 					'headers' => $headers,
 					'defaults' => $default_fields,
-					'previousuploadfile' => $_FILES['csv_import']['name'],
+					'previousuploadfile' => $_FILES['dcsvi_import']['name'],
 					'defaultfieldscount' => count($default_fields)+2,
 					'header_count' => count($headers),
 					'default_count' => count($default_fields),
 					'results' => description(),
 					'deliminator' => $delimiter,
 					'header_array' => $headers,
+					'post_type' => $_POST['post_type'],
+					'post_status' => $_POST['post_status']
 					));
 
 		} else { // File appears to have less than one row or less than one field:
@@ -194,128 +200,129 @@ function upload_csv_file() {
 					));
 		}
 	} elseif (isset($_POST['post_csv'])) { // File has been uploaded and fields have been mapped, start importing the file into posts and meta:
-		$upload_dir = wp_upload_dir();
-		$dir  = $upload_dir['basedir']."/import_temp/";
-		get_csv_file_data($dir.$_POST['filename'],$delimiter);
-		foreach ($_POST as $postkey=>$postvalue) {
-			if ($postvalue != '-- Select --') {
-				$ret_array[$postkey]=$postvalue;
-			}
-		}
-		foreach($data_rows as $key => $value) {
-			for ($i=0;$i<count($value) ; $i++) {
-				if (array_key_exists('mapping'.$i,$ret_array)) {
-					if ($ret_array['mapping'.$i]!='add_custom'.$i) {
-						$new_post[$ret_array['mapping'.$i]] = $value[$i];
-					} else {
-						$new_post[$ret_array['textbox'.$i]] = $value[$i];
-						$custom_array[$ret_array['textbox'.$i]] = $value[$i];
-					}
-				}
-			}
-			for ($inc=0;$inc<count($value);$inc++) {
-				foreach($keys as $k => $v) {
-					if (array_key_exists($v,$new_post)) {
-						$custom_array[$v] =$new_post[$v];
-					}
-				}
-			}
-			foreach ($new_post as $post_key => $cval) {
-				if ($post_key!='post_category' && $post_key!='post_tag' && $post_key!='featured_image') {
-					if (array_key_exists($post_key,$custom_array)) {
-						$darray[$post_key]=$new_post[$post_key];
-				   	} else {
-				   		$data_array[$post_key]=$new_post[$post_key];
-				   	}
-   				} else {
-			   		if ($post_key == 'post_tag') {
-			   			$tags[$post_key]=$new_post[$post_key];
-   					}
-   					if ($post_key == 'post_category') {
-   						$categories[$post_key]=$new_post[$post_key];
-   					}
-					if ($post_key == 'featured_image') {
-						$file_url=$filetype[$post_key]=$new_post[$post_key];
-						$file_type = explode('.',$filetype[$post_key]);
-						$count = count($file_type);
-						$type= $file_type[$count-1];
-						if ($type == 'png') {
-							$file['post_mime_type']='image/png';
-						}
-						else if ($type == 'jpg') {
-							$file['post_mime_type']='image/jpeg';
-						}
-						else if ($type == 'gif') {
-							$file['post_mime_type']='image/gif';
-						}
-						$img_name = explode('/',$file_url);
-						$imgurl_split = count($img_name);
-						$img_name = explode('.',$img_name[$imgurl_split-1]);
-						$img_title = $img_name = $img_name[0];
-						$dir = wp_upload_dir(); 
-						$dirname = 'featured_image';
-						$full_path = $dir['basedir'].'/'.$dirname;
-						$baseurl = $dir['baseurl'].'/'.$dirname;
-						$filename = explode('/',$file_url);
-						$file_split = count($filename);
-						$filepath = $full_path.'/'.$filename[$file_split-1];
-						$fileurl = $baseurl.'/'.$filename[$file_split-1];
-						// Make directory for image if one doesn't exist:
-						if (!is_dir($full_path)) {
-							wp_mkdir_p($full_path);
-						}
-						copy($file_url,$filepath);
-						$file['guid']=$fileurl;
-						$file['post_title']=$img_title;
-						$file['post_content']='';
-						$file['post_status']='inherit';
-					}
-				}
-			}
-			$data_array['post_status']='publish';
-			if (isset($_POST['csv_importer_import_as_draft'])) {
-				$data_array['post_status']='draft';
-			}
-			$data_array['post_type']=$_POST['csv_importer_cat'];
-			$post_id = wp_insert_post( $data_array );
-			if (!empty($custom_array)) {
-				foreach($custom_array as $custom_key => $custom_value) {
-					add_post_meta($post_id, $custom_key, $custom_value);
-				}
-			}
+		// $upload_dir = wp_upload_dir();
+		// $dir  = $upload_dir['basedir']."/import_temp/";
+		// dcsvi_get_dcsvi_file_data($dir.$_POST['filename'],$delimiter);
+		// foreach ($_POST as $postkey=>$postvalue) {
+		// 	if ($postvalue != '-- Select --') {
+		// 		$ret_array[$postkey]=$postvalue;
+		// 	}
+		// }
+		// foreach($data_rows as $key => $value) {
+		// 	for ($i=0;$i<count($value) ; $i++) {
+		// 		if (array_key_exists('mapping'.$i,$ret_array)) {
+		// 			if ($ret_array['mapping'.$i]!='add_custom'.$i) {
+		// 				$new_post[$ret_array['mapping'.$i]] = $value[$i];
+		// 			} else {
+		// 				$new_post[$ret_array['textbox'.$i]] = $value[$i];
+		// 				$custom_fields[$ret_array['textbox'.$i]] = $value[$i];
+		// 			}
+		// 		}
+		// 	}
+		// 	for ($inc=0;$inc<count($value);$inc++) {
+		// 		foreach($keys as $k => $v) {
+		// 			if (array_key_exists($v,$new_post)) {
+		// 				$custom_fields[$v] =$new_post[$v];
+		// 			}
+		// 		}
+		// 	}
+		// 	foreach ($new_post as $post_key => $cval) {
+		// 		if ($post_key!='post_category' && $post_key!='post_tag' && $post_key!='featured_image') {
+		// 			if (array_key_exists($post_key,$custom_fields)) {
+		// 				$darray[$post_key]=$new_post[$post_key];
+		// 		   	} else {
+		// 		   		$data_array[$post_key]=$new_post[$post_key];
+		// 		   	}
+  //  				} else {
+		// 	   		if ($post_key == 'post_tag') {
+		// 	   			$tags[$post_key]=$new_post[$post_key];
+  //  					}
+  //  					if ($post_key == 'post_category') {
+  //  						$categories[$post_key]=$new_post[$post_key];
+  //  					}
+		// 			if ($post_key == 'featured_image') {
+		// 				$file_url=$filetype[$post_key]=$new_post[$post_key];
+		// 				$file_type = explode('.',$filetype[$post_key]);
+		// 				$count = count($file_type);
+		// 				$type= $file_type[$count-1];
+		// 				if ($type == 'png') {
+		// 					$file['post_mime_type']='image/png';
+		// 				}
+		// 				else if ($type == 'jpg') {
+		// 					$file['post_mime_type']='image/jpeg';
+		// 				}
+		// 				else if ($type == 'gif') {
+		// 					$file['post_mime_type']='image/gif';
+		// 				}
+		// 				$img_name = explode('/',$file_url);
+		// 				$imgurl_split = count($img_name);
+		// 				$img_name = explode('.',$img_name[$imgurl_split-1]);
+		// 				$img_title = $img_name = $img_name[0];
+		// 				$dir = wp_upload_dir(); 
+		// 				$dirname = 'featured_image';
+		// 				$full_path = $dir['basedir'].'/'.$dirname;
+		// 				$baseurl = $dir['baseurl'].'/'.$dirname;
+		// 				$filename = explode('/',$file_url);
+		// 				$file_split = count($filename);
+		// 				$filepath = $full_path.'/'.$filename[$file_split-1];
+		// 				$fileurl = $baseurl.'/'.$filename[$file_split-1];
+		// 				// Make directory for image if one doesn't exist:
+		// 				if (!is_dir($full_path)) {
+		// 					wp_mkdir_p($full_path);
+		// 				}
+		// 				copy($file_url,$filepath);
+		// 				$file['guid']=$fileurl;
+		// 				$file['post_title']=$img_title;
+		// 				$file['post_content']='';
+		// 				$file['post_status']='inherit';
+		// 			}
+		// 		}
+		// 	}
+		// 	$data_array['post_status']='publish';
+		// 	if (isset($_POST['dcsvi_importer_import_as_draft'])) {
+		// 		$data_array['post_status']='draft';
+		// 	}
+		// 	$data_array['post_type']=$_POST['dcsvi_importer_cat'];
+		// 	$post_id = wp_insert_post( $data_array );
+		// 	if (!empty($custom_fields)) {
+		// 		foreach($custom_fields as $custom_key => $custom_value) {
+		// 			add_post_meta($post_id, $custom_key, $custom_value);
+		// 		}
+		// 	}
 
-			// Create/Add tags to post
-			if (!empty($tags)) { // We have tags to add:
-				foreach($tags as $tag_key => $tag_value) {
-					wp_set_post_tags( $post_id, $tag_value );
-				}
-			}  // End of code to add tags
+		// 	// Create/Add tags to post
+		// 	if (!empty($tags)) { // We have tags to add:
+		// 		foreach($tags as $tag_key => $tag_value) {
+		// 			wp_set_post_tags( $post_id, $tag_value );
+		// 		}
+		// 	}  // End of code to add tags
 
-				// Create/Add category to post
-			if (!empty($categories)) { // We have categories to add:
-				$split_line = explode('|',$categories['post_category']);
-				wp_set_object_terms($post_id, $split_line, 'category');
+		// 		// Create/Add category to post
+		// 	if (!empty($categories)) { // We have categories to add:
+		// 		$split_line = explode('|',$categories['post_category']);
+		// 		wp_set_object_terms($post_id, $split_line, 'category');
 
-			}
+		// 	}
 
-			if (!empty($file)) { // We have a file to 
-				$file_name=$dirname.'/'.$img_title.'.'.$type;
-				$attach_id = wp_insert_attachment($file, $file_name, $post_id);
-				require_once(ABSPATH . 'wp-admin/includes/image.php');
-				$attach_data = wp_generate_attachment_metadata( $attach_id, $fileurl );
-				wp_update_attachment_metadata( $attach_id, $attach_data );
-				//add_post_meta($post_id, '_thumbnail_id', $attach_id, true);
-				set_post_thumbnail( $post_id, $attach_id );
-			}
-		}
-		?>
-		<div style="background-color: #FFFFE0;border-color: #E6DB55;border-radius: 3px 3px 3px 3px;border-style: solid;border-width: 1px;margin: 5px 15px 2px; padding: 5px;text-align:center"><b> Successfully Imported ! </b></div>
-		<div style="margin-top:30px;margin-left:10px">
-			<form class="add:the-list: validate" method="post" enctype="multipart/form-data">
-				<input type="submit" id="goto" name="goto" value="Continue" />
-			</form>
-		</div>
-		<?php 
+		// 	if (!empty($file)) { // We have a file to 
+		// 		$file_name=$dirname.'/'.$img_title.'.'.$type;
+		// 		$attach_id = wp_insert_attachment($file, $file_name, $post_id);
+		// 		require_once(ABSPATH . 'wp-admin/includes/image.php');
+		// 		$attach_data = wp_generate_attachment_metadata( $attach_id, $fileurl );
+		// 		wp_update_attachment_metadata( $attach_id, $attach_data );
+		// 		//add_post_meta($post_id, '_thumbnail_id', $attach_id, true);
+		// 		set_post_thumbnail( $post_id, $attach_id );
+		// 	}
+		// }
+
+		echo $twig->render('admin-import-finish.html', 
+			array(
+				'cache' => FALSE,
+				'debug' => TRUE,
+				'main_status_message' => __('Import Status'),
+				));
+
+
 		// Remove CSV file
 		$upload_dir = wp_upload_dir();
 		$csvdir  = $upload_dir['basedir']."/import_temp/";
@@ -334,6 +341,7 @@ function upload_csv_file() {
 				'post_type_label' => __('Post Type'),
 				'upload_file_label' => __('Upload File'),
 				'post_status_label' => __('Post Status'),
+				'post_status_list' => array('Published', 'Draft', ''),
 				'post_as_status' => $post_as_status,
 				'draft_checked' => ($post_as_status == 'draft') ? TRUE : FALSE,
 				'post_types' => get_post_types(array('public' => TRUE), 'objects'),
@@ -344,45 +352,47 @@ function upload_csv_file() {
 	}
 }
 
-function add_new_post($post, $mapping) {
-	// 
-	$custom_array = array();
-	
+// Pull data from CSV file and mapping from POST vars...
+// Merge data into one $post variable, then save that to the options table serialized.
+function dcsvi_preprocess_dcsvi_to_post() {
+	$post = array();
+	$custom_fields = array();
 	$upload_dir = wp_upload_dir();
 	$import_dir  = $upload_dir['basedir'] . '/import_temp/';
 	
-
-	get_csv_file_data($dir.$_POST['filename'],$delimiter);
+	list($headers, $dcsvi_rows, $delimiter) = dcsvi_get_dcsvi_file_data($dir.$_POST['filename'],$delimiter);
 	
+	// Put our mapping data (user input) into $mapping_data:
 	foreach ($_POST as $postkey=>$postvalue) {
 		if ($postvalue != '-- Select --') {
-			$ret_array[$postkey]=$postvalue;
+			$mapping_data[$postkey] = $postvalue;
 		}
 	}
 	
-	foreach($data_rows as $key => $value) {
+	// Start building up $new_post based on mapping data.
+	foreach($dcsvi_rows as $key => $value) {
 		for ($i=0;$i<count($value) ; $i++) {
-			if (array_key_exists('mapping-'.$i,$ret_array)) {
-				$mapping_val = $ret_array['mapping-'.$i];
-				$textbox_val = $ret_array['textbox-'.$i];
-				if ($mapping_val!='add_custom-'.$i) {
+			if ( array_key_exists('mapping-'.$i, $mapping_data) ) {
+				$mapping_val = $mapping_data['mapping-'.$i];
+				$textbox_val = $mapping_data['textbox-'.$i];
+				if ( $mapping_val != 'add_custom-' . $i ) {
 					$new_post[$mapping_val] = $value[$i];
 				} else {
 					$new_post[$textbox_val] = $value[$i];
-					$custom_array[$textbox_val] = $value[$i];
+					$custom_fields[$textbox_val] = $value[$i];
 				}
 			}
 		}
-		for ($inc=0;$inc<count($value);$inc++) {
+		for ( $inc=0; $inc<count($value); $inc++ ) {
 			foreach($keys as $k => $v) {
 				if (array_key_exists($v,$new_post)) {
-					$custom_array[$v] = $new_post[$v];
+					$custom_fields[$v] = $new_post[$v];
 				}
 			}
 		}
 		foreach ($new_post as $post_key => $cval) {
 			if ($post_key!='post_category' && $post_key!='post_tag' && $post_key!='featured_image') {
-				if (array_key_exists($post_key,$custom_array)) {
+				if (array_key_exists($post_key,$custom_fields)) {
 					$darray[$post_key] = $new_post[$post_key];
 			   	} else {
 			   		$data_array[$post_key] = $new_post[$post_key];
@@ -434,29 +444,29 @@ function add_new_post($post, $mapping) {
 				}
 			}
 		}
-		$data_array['post_status']='publish';
-		if (isset($_POST['csv_importer_import_as_draft'])) {
-			$data_array['post_status']='draft';
-		}
-		$data_array['post_type']=$_POST['csv_importer_cat'];
-		$post_id = wp_insert_post( $data_array );
-		if (!empty($custom_array)) {
-			foreach($custom_array as $custom_key => $custom_value) {
-				add_post_meta($post_id, $custom_key, $custom_value);
+		
+		$data_array['post_status'] = $_POST['dcsvi_import_status'];
+		$data_array['post_type']=$_POST['dcsvi_importer_cat'];
+		
+		//$post_id = wp_insert_post( $data_array );
+		if (!empty($custom_fields)) {
+			foreach($custom_fields as $custom_key => $custom_value) {
+				$post[$custom_key] = $custom_value;
+				//add_post_meta($post_id, $custom_key, $custom_value);
 			}
 		}
 
 		// Create/Add tags:
 		if (!empty($tags)) { // We have tags to add:
 			foreach($tags as $tag_key => $tag_value) {
-				wp_set_post_tags( $post_id, $tag_value );
+				//wp_set_post_tags( $post_id, $tag_value );
 			}
 		} 
 
 		// Create/Add category:
 		if (!empty($categories)) { // We have categories to add:
 			$split_line = explode('|',$categories['post_category']);
-			wp_set_object_terms($post_id, $split_line, 'category');
+			//wp_set_object_terms($post_id, $split_line, 'category');
 		}
 
 		if (!empty($file)) {
@@ -470,7 +480,20 @@ function add_new_post($post, $mapping) {
 	}
 }
 
-// Adds tags, categories, or other post meta:
+// Posts are added from the CSV file by:
+//	- Converting the mapping specified by the user into a $post variable.
+//	- Adding the actual post data from the CSV file into $post.
+//	- Batching together 10 posts into a "job".
+//	- Sending this job to WP-Cron with a scheduling handler function.
+//	- Scheduling handler will run every five seconds doing the following:
+//		- If all five posts have been added:
+//			- Remove this job from cron.
+//			- Batch together the next five in a new job and send to cron.
+//		- Else:
+//			- Run the insert function again for each of the posts.
+//		- Update the status message for this job.
+
+// Adds one post including tags, categories, or other post meta:
 function dcsvi_add_post($input_data) {
 	$post = array(
 	'ID' => $input_data[$input_data['ID_field']], 
@@ -493,8 +516,11 @@ function dcsvi_add_post($input_data) {
 	'tags_input' => $input_data[$input_data['tags_input_field']], 
 	'to_ping' => $input_data[$input_data['to_ping_field']], 
 	'tax_input' => $input_data[$input_data['tax_input_field']]);
-
+	
+	// Insert the post
 	if ($wp_insert == wp_insert_post( $post, $wp_error = TRUE )) {
+		// TODO: Insert tags, categories, and custom fields:
+
 		return TRUE;
 	}
 	if ($error) {
@@ -503,6 +529,7 @@ function dcsvi_add_post($input_data) {
 	return FALSE;
 }
 
+// Save post and mapping data in one options field of the database.
 function dcsvi_save_post_data_to_options($input_data, $job_id) {
 	if (!get_option("dcsvi_post_data_$job_id")) {
 		add_option( "dcsvi_post_data_$job_id", $input_data, '', 'no' );
@@ -511,9 +538,11 @@ function dcsvi_save_post_data_to_options($input_data, $job_id) {
 	return FALSE;
 }
 
+// Start a new job (batch of 10 posts)
 function dcsvi_new_job($posts) {
 	$new_job_id = uniqid();
 	dcsvi_save_post_data_to_options($posts, $new_job_id);
+	// Start WP-Cron job to make sure this finishes and handle moving on to next parts:
 	wp_schedule_event( time(), 'five_seconds', 'dcsvi_job_scheduler', array($new_job_id) );
 	if (!get_option("dcsvi_running_job_$new_job_id")) {
 		add_option( "dcsvi_running_job_$new_job_id", 'Started...', '', 'no');
@@ -533,13 +562,20 @@ function dcsvi_job_scheduler($job_id) {
 	$completed = (array)get_option("dcsvi_job_completed_$job_id");
 	$active = (array)get_option("dcsvi_job_active_$job_id");
 
-	foreach ($active as $row) {
-		if (get_post($row)) {
-			pop($active[$row->index]);
-			push($row, $completed);
-		} else {
-			dcsvi_add_post($row);
+	// Check to see if there are still posts to add:
+	if (count($active) > 0) {
+		// For each post still waiting to be added:
+		foreach ($active as $post) {
+			// Add post:
+			dcsvi_add_new_post($post);
 		}
+	} else {
+		// Our $active queue is empty, 
+		//  let's make sure everything in $completed is there first:
+		foreach ($completed as $post) {
+
+		}
+		dcsvi_complete_job($job_id);
 	}
 
 	if (!get_option( "dcsvi_job_status_$job_id", $default = false )) {

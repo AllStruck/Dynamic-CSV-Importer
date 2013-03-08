@@ -5,13 +5,13 @@
 
 					<!-- File input -->
 					<p>
-						<label for="csv_import">{{upload_file_label}}</label>
-						<input name="csv_import" id="csv_import" type="file" value="" aria-required="true" />
+						<label for="dcsvi_import">{{upload_file_label}}</label>
+						<input name="dcsvi_import" id="dcsvi_import" type="file" value="" aria-required="true" />
 					</p>
 
 					<p>
 						<label>{{post_type_label}}</label>
-						<select name='csv_importer_cat'>
+						<select name='dcsvi_importer_cat'>
 							{% for type in post_types %}
 								{% set typename = type.labels.singular_name %}
 								<option id="{{typename}}" name="{{typename}}">{{typename}}</option>
@@ -21,9 +21,8 @@
 					</p>
 
 					<p>
-						<label for="post_status"></label>
+						<label for="post_status">{{post_status_label}}</label>
 						<select name='post_status'>
-							{{post_status}}
 							{% for status in post_status_list %}
 								{% set statusname = status.labels.singular_name %}
 								<option id="{{statusname}}" name="{{statusname}}">{{statusname}}</option>
