@@ -87,9 +87,9 @@ foreach($keys as $val) {
 }
 // Add menu and interface to back-end (admin):
 function dcsvi_add_admin_interface() {
-	add_submenu_page( 'tools.php', 'Dynamic CSV Importer', 'CSV Importer', 'manage_options', 'dynamic_dcsvi_importer', 'upload_dcsvi_file');
+	add_submenu_page( 'tools.php', 'Dynamic CSV Importer', 'CSV Importer', 'manage_options', 'dynamic_dcsvi_importer', 'dcsvi_interface_handler');
 	add_menu_page('CSV importer settings', 'CSV Importer', 'manage_options',  
-		'upload_dcsvi_file', 'upload_dcsvi_file');
+		'dcsvi_interface_handler', 'dcsvi_interface_handler');
 }
 add_action("admin_menu", "dcsvi_add_admin_interface");
 
@@ -110,7 +110,7 @@ function description() {
 }
 
 // Get all data from the CSV and set $headers to first line (keys):
-function dcsvi_get_dcsvi_file_data($file,$delimiter) {
+function dcsvi_get_csv_file_data($file,$delimiter) {
 	// Set this to avoid missing lines on files with bad carriage return encoding:
 	ini_set('auto_detect_line_endings', true);
 
@@ -135,7 +135,7 @@ function dcsvi_get_dcsvi_file_data($file,$delimiter) {
 }
 
 // Move file
-function move_file() {
+function dcsvi_move_file() {
 	$upload_dir = wp_upload_dir();
 	$uploads_dir  = $upload_dir['basedir'] . '/import_temp/';
 	if ($_FILES['dcsvi_import']['error'] == 0) {
@@ -146,7 +146,7 @@ function move_file() {
 }
 
 // Remove file
-function fileDelete($filepath,$filename) {
+function dcsvi_delete_csv_file($filepath,$filename) {
 	if (file_exists($filepath.$filename)&&$filename!=""&&$filename!="n/a") {
 		unlink ($filepath.$filename);
 		return TRUE;
@@ -155,7 +155,7 @@ function fileDelete($filepath,$filename) {
 }
 
 // Map the fields and upload data:
-function upload_dcsvi_file() {
+function dcsvi_interface_handler() {
 	global $headers, $data_rows, $default_fields, $keys, $custom_fields, $delimiter, $twig;
 
 	$upload_dir = wp_upload_dir();
@@ -165,8 +165,8 @@ function upload_dcsvi_file() {
 	$post_as_status = isset($_POST['status']) ? $_POST['status'] : "draft";
 	
 	if (isset($_POST['Import'])) { // File has been submitted for import:
-		list($headers, $data_rows, $delimiter) = dcsvi_get_dcsvi_file_data($_FILES['dcsvi_import']['tmp_name'],$delimiter);
-		move_file();
+		list($headers, $data_rows, $delimiter) = dcsvi_get_csv_file_data($_FILES['dcsvi_import']['tmp_name'],$delimiter);
+		dcsvi_move_file();
 		
 		if ( count($headers)>=1 &&  count($data_rows)>=1 ) { 
 			// File has at least one row and at least one field.
@@ -215,7 +215,7 @@ function upload_dcsvi_file() {
 		$CSVfile = $_POST['filename'];
 		if (file_exists($csvdir.$CSVfile)) {
 			chmod("$csvdir"."$CSVfile", 755);
-			fileDelete($csvdir,$CSVfile);
+			dcsvi_delete_csv_file($csvdir,$CSVfile);
 		}
 	} else { // File not submitted for import:
 		echo $twig->render('admin-import-start.html', 
