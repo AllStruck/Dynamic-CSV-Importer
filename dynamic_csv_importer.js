@@ -4,9 +4,9 @@ function toggle_custom_field(value, select_id, input_id) {
 	var selected_element = document.getElementById(select_id);
 		custom_input = document.getElementById(input_id);
 	if (selected_element.options[selected_element.selectedIndex].text == 'Add Custom Field' && custom_input.style.display=="none") {
-		custom_input.style.display="visible";
+		custom_input.style.display = 'inline-block';
 	} else {
-		custom_input.style.display="none";
+		custom_input.style.display = 'none';
 	}
 }
 
