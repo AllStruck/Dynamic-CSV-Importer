@@ -559,7 +559,7 @@ function dcsvi_job_scheduler($job_id) {
 }
 
 // Add "five_seconds" as a time supported by WP-Cron:
-add_filter( 'cron_schedules', 'cron_add_five_seconds' );
+add_filter( 'cron_schedules', 'dcsvi_cron_add_five_seconds' );
 function dcsvi_cron_add_five_seconds( $schedules ) {
 	// Adds once weekly to the existing schedules.
 	$schedules['five_seconds'] = array(
