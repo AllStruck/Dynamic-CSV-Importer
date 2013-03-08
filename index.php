@@ -188,8 +188,8 @@ function upload_dcsvi_file() {
 					'results' => description(),
 					'deliminator' => $delimiter,
 					'header_array' => $headers,
-					'post_type' => $_POST['post_type'],
-					'post_status' => $_POST['post_status']
+					'post_type' => $_POST['dcsvi-post-type'],
+					'post_status' => $_POST['dcsvi-post-status']
 					));
 
 		} else { // File appears to have less than one row or less than one field:
