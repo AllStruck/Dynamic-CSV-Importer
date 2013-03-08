@@ -13,8 +13,8 @@
 						<label for="dcsvi-post-type">{{post_type_label}}</label>
 						<select name="dcsvi-post-type">
 							{% for type in post_types %}
-								{% set typename = type.labels.singular_name %}
-								<option id="{{typename}}" name="{{typename}}">{{typename}}</option>
+								{% set type_name = type.labels.singular_name %}
+								<option id="{{type_name}}" name="{{type_name}}">{{type_name}}</option>
 							{% endfor %}
 							<option id="post-types-from-file" name="post-types-from-file">Post types from file...</option>
 						</select>
@@ -24,7 +24,7 @@
 						<label for="dcsvi-post-status">{{post_status_label}}</label>
 						<select name="dcsvi-post-status">
 							{% for status_name,status_id in post_status_list %}
-								<option id="{{status_name}}" name="{{status_name}}" value="{{statusid}}">{{status_name}}</option>
+								<option id="{{status_name}}" name="{{status_name}}" value="{{status_id}}">{{status_name}}</option>
 							{% endfor %}
 							<option id="from-file" name="from-file">From file...</option>
 						</select>
