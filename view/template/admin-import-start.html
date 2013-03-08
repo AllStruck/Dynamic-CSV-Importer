@@ -23,9 +23,9 @@
 					<p>
 						<label for="post_status">{{post_status_label}}</label>
 						<select name="post_status">
-							{% for status in post_status_list %}
-								{% set statusname = status.labels.singular_name %}
-								<option id="{{statusname}}" name="{{statusname}}">{{statusname}}</option>
+							{% for status,status_id in post_status_list %}
+								{% set statusname = status %}
+								<option id="{{statusname}}" name="{{statusname}}" value="{{statusid}}">{{statusname}}</option>
 							{% endfor %}
 							<option id="from-file" name="from-file">From file...</option>
 						</select>
