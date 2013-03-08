@@ -3,18 +3,6 @@
 					<h3>Import Data Configuration</h3>
 					<div style="margin-top:30px;">
 						<input name="_csv_importer_import_as_draft" type="hidden" value="publish" />
-						<label>
-							<input name="csv_importer_import_as_draft" 
-								type="checkbox" checked"{{draft-checked}}" value="draft" />
-							Import as drafts
-						</label>
-						<label>Select Post Type</label>
-						<select name='csv_importer_cat'>
-						{% for type in post_types %}
-							{% set typename = type.labels.singular_name %}
-							<option id="{{typename}}" name="{{typename}}">{{typename}}</option>
-						{% endfor %}
-						</select>
 						<h3>Mapping the Field</h3>
 						<div id="dcsvi-display-area">
 							<input type="hidden" id="h1" name="h1" value="{{default_count}}"/>

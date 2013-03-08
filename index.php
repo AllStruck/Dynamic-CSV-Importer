@@ -106,7 +106,7 @@ add_action('admin_enqueue_scripts', 'LoadWpScript');
 
 function description() {
 	// Return description of plugin:
-	_e('<p>Dynamic CSV Importer will add new posts, pages, or custom posts of a custom type from a CSV file. You do not need to change the CSV file; select the CSV file and map each field to the post field (custom meta fields are supported).</p>');
+	__('<p>Dynamic CSV Importer will add new posts, pages, or custom posts of a custom type from a CSV file. You do not need to change the CSV file; select the CSV file and map each field to the post field (custom meta fields are supported).</p>');
 }
 
 // Get all data from the CSV and set $headers to first line (keys):
@@ -325,28 +325,22 @@ function upload_csv_file() {
 			fileDelete($csvdir,$CSVfile);
 		}
 	} else { // File not submitted for import:
-		?>
-		<div class="wrap">
-			<div style="min-width:45%;float:left;height:500px;">
-				<h2>Dynamic CSV Importer</h2>
-				<form class="add:the-list: validate" method="post" enctype="multipart/form-data" onsubmit="return file_exist();">
-
-				<!-- File input -->
-				<p><label for="csv_import">Upload file:</label><br/>
-					<input name="csv_import" id="csv_import" type="file" value="" aria-required="true" /></p><br/>
-					<p><label>Delimiter</label>&nbsp;&nbsp;&nbsp;
-						<select name="delim" id="delim">
-							<option value=",">,</option>
-							<option value=";">;</option>
-						</select>
-					</p>
-					<p class="submit"><input type="submit" class="button" name="Import" value="Import" /></p>
-				</form>
-			<div style="min-width:45%;">
-				<?php $result = description(); print_r($result); ?>
-			</div>
-		</div><!-- end wrap -->
-		<?php
+		echo $twig->render('admin-import-start.html', 
+			array(
+				'cache' => FALSE,
+				'debug' => TRUE,
+				'page_title' => __('Upload CSV File'),
+				'delimiter_label' => __('Delimiter'),
+				'post_type_label' => __('Post Type'),
+				'upload_file_label' => __('Upload File'),
+				'post_status_label' => __('Post Status'),
+				'post_as_status' => $post_as_status,
+				'draft_checked' => ($post_as_status == 'draft') ? TRUE : FALSE,
+				'post_types' => get_post_types(array('public' => TRUE), 'objects'),
+				'description_text' => description(),
+				'deliminator' => $delimiter,
+				'header_array' => $headers,
+				));
 	}
 }
 
