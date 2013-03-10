@@ -27,7 +27,7 @@
 define('DCSVI_PREFIX', 'dcsvi_');
 define('DCSVI_PLUGIN_DIR_PATH', plugin_dir_path(__FILE__) );
 define('DCSVI_PLUGIN_DIR_URL', plugin_dir_url( __FILE__ ));
-global $data_rows, $headers, $default_fields, $wpdb, $keys, $delimiter;
+global $data_rows, $headers, $default_fields, $wpdb, $existing_meta_keys, $delimiter;
 $data_rows = array();
 $headers = array();
 
@@ -39,12 +39,9 @@ $html_template_cache_directory = DCSVI_PLUGIN_DIR_PATH . '/view/template_cache';
 $template_loader = new Twig_Loader_Filesystem( $html_template_directory );
 $twig = new Twig_Environment($template_loader, array('cache' => FALSE));
 
-
-//echo $twig->render('index.html', array('name' => 'Fabien'));
-
 // Set up folder in standard WP Uploads folder for temporary uploading of CSV file:
 $upload_dir = wp_upload_dir();
-$import_dir  = $upload_dir['basedir']."/import_temp/";
+$import_dir = $upload_dir['basedir']."/import_temp/";
 if (!is_dir($import_dir)) {
 	wp_mkdir_p($import_dir);
 }
@@ -61,7 +58,7 @@ $delimiter = empty($_POST['delim']) ? '' : $_POST['delim'];
 $limit = (int) apply_filters( 'postmeta_form_limit', 30 );
 
 // Get key values for existing meta (custom fields):
-$keys = $wpdb->get_col( 
+$existing_meta_keys = $wpdb->get_col( 
 	"SELECT meta_key
 	FROM $wpdb->postmeta
 	GROUP BY meta_key
@@ -82,25 +79,25 @@ $default_fields = array(
 	'post_parent'     => 0,
 	);
 
-foreach($keys as $val) {
+foreach($existing_meta_keys as $val) {
 	$default_fields[$val]=$val;
 }
 // Add menu and interface to back-end (admin):
 function dcsvi_add_admin_interface() {
-	add_submenu_page( 'tools.php', 'Dynamic CSV Importer', 'CSV Importer', 'manage_options', 'dynamic_dcsvi_importer', 'dcsvi_interface_handler');
+	add_submenu_page( 'tools.php', 'Dynamic CSV Importer', 'CSV Importer', 'manage_options', 'dynamic_dcsvi_importer', 'dcsvi_interface');
 	add_menu_page('CSV importer settings', 'CSV Importer', 'manage_options',  
-		'dcsvi_interface_handler', 'dcsvi_interface_handler');
+		'dcsvi_interface', 'dcsvi_interface');
 }
 add_action("admin_menu", "dcsvi_add_admin_interface");
 
 // Add JavaScript file to head:
-function LoadWpScript() {
+function dcsvi_load_scripts() {
 	wp_deregister_script( 'dynamic_dcsvi_importer_scripts' );
 	wp_register_script('dynamic_dcsvi_importer_scripts', DCSVI_PLUGIN_DIR_URL . '/dynamic_dcsvi_importer.js', array('jquery'));
 	wp_enqueue_script('dynamic_dcsvi_importer_scripts');
 
 }
-add_action('admin_enqueue_scripts', 'LoadWpScript');
+add_action('admin_enqueue_scripts', 'dcsvi_load_scripts');
 
 
 
@@ -121,12 +118,12 @@ function dcsvi_get_csv_file_data($file,$delimiter) {
 
 	// Run through every row of CSV and add first row to $headers, all others to $data_rows:
 	$first_round = TRUE;
-	while ($keys = fgetcsv($resource,'',$delimiter,'"')) {
+	while ($existing_meta_keys = fgetcsv($resource,'',$delimiter,'"')) {
 		if ($first_round) {
-			$headers = $keys;
+			$headers = $existing_meta_keys;
 			$first_round = FALSE;
 		} else {
-			array_push($data_rows, $keys);
+			array_push($data_rows, $existing_meta_keys);
 		}
 	}
 	fclose($resource);
@@ -145,7 +142,7 @@ function dcsvi_move_file() {
 	}
 }
 
-// Remove file
+// Remove CSV file
 function dcsvi_delete_csv_file($filepath,$filename) {
 	if (file_exists($filepath.$filename)&&$filename!=""&&$filename!="n/a") {
 		unlink ($filepath.$filename);
@@ -155,8 +152,8 @@ function dcsvi_delete_csv_file($filepath,$filename) {
 }
 
 // Map the fields and upload data:
-function dcsvi_interface_handler() {
-	global $headers, $data_rows, $default_fields, $keys, $custom_fields, $delimiter, $twig;
+function dcsvi_interface() {
+	global $headers, $data_rows, $default_fields, $existing_meta_keys, $custom_fields, $delimiter, $twig;
 
 	$upload_dir = wp_upload_dir();
 	$import_dir  = $upload_dir['basedir'] . '/import_temp/';
@@ -211,7 +208,7 @@ function dcsvi_interface_handler() {
 
 		// Remove CSV file
 		$upload_dir = wp_upload_dir();
-		$csvdir  = $upload_dir['basedir']."/import_temp/";
+		$csvdir  = $upload_dir['basedir'].'/import_temp/';
 		$CSVfile = $_POST['filename'];
 		if (file_exists($csvdir.$CSVfile)) {
 			chmod("$csvdir"."$CSVfile", 755);
@@ -240,15 +237,24 @@ function dcsvi_interface_handler() {
 	}
 }
 
+
+
+
+
+
+
+
+
+
 // Pull data from CSV file and mapping from POST vars...
-// Merge data into one $post variable, then save that to the options table serialized.
-function dcsvi_preprocess_dcsvi_to_post() {
-	$post = array();
+// Merge data into one $posts variable, then save that to the options table serialized.
+function dcsvi_preprocess_csv_to_post() {
+	$posts = array();
 	$custom_fields = array();
 	$upload_dir = wp_upload_dir();
 	$import_dir  = $upload_dir['basedir'] . '/import_temp/';
 	
-	list($headers, $dcsvi_rows, $delimiter) = dcsvi_get_dcsvi_file_data($dir.$_POST['filename'],$delimiter);
+	list($headers, $csv_rows, $delimiter) = dcsvi_get_csv_file_data($dir.$_POST['filename'],$delimiter);
 	
 	// Put our mapping data (user input) into $mapping_data:
 	foreach ($_POST as $postkey=>$postvalue) {
@@ -258,34 +264,61 @@ function dcsvi_preprocess_dcsvi_to_post() {
 	}
 	
 	// Start building up $new_post based on mapping data.
-	foreach($dcsvi_rows as $key => $value) {
-		for ($i=0;$i<count($value) ; $i++) {
-			if ( array_key_exists('mapping-'.$i, $mapping_data) ) {
-				$mapping_val = $mapping_data['mapping-'.$i];
-				$textbox_val = $mapping_data['textbox-'.$i];
-				if ( $mapping_val != 'add_custom-' . $i ) {
-					$new_post[$mapping_val] = $value[$i];
+	// Iterate through every row in the CSV:
+	foreach($csv_rows as $row_key => $row_values) {
+
+		// Iterate through every field in this row:
+		foreach ( $row_values as $index => $row ) {
+			if ( array_key_exists('mapping-'.$index, $mapping_data) ) { // This field has been mapped.
+				if ($mapping_data['mapping-'.$index] == 'add_custom-'.$index) { // This mapping is a new custom field.
+					$new_post[$textbox_value] = $value[$index];
+					$custom_fields[$textbox_value] = $value[$index];
 				} else {
-					$new_post[$textbox_val] = $value[$i];
-					$custom_fields[$textbox_val] = $value[$i];
+					$new_post[$mapping_value] = $value[$index];
 				}
 			}
 		}
-		for ( $inc=0; $inc<count($value); $inc++ ) {
-			foreach($keys as $k => $v) {
-				if (array_key_exists($v,$new_post)) {
-					$custom_fields[$v] = $new_post[$v];
-				}
+
+		// Iterate through existing meta keys and prepare $custom_fields:
+		foreach($existing_meta_keys as $key => $value) {
+			if (array_key_exists($value,$new_post)) { // This existing meta key matches something in our $new_post
+				// Add $new_post value to $custom_fields
+				$custom_fields[$value] = $new_post[$value];
 			}
 		}
+
+		// OLD VERSION:
+		// for ($i=0;$i<count($value); $i++) {
+		// 	if ( array_key_exists('mapping-'.$i, $mapping_data) ) {
+		// 		$mapping_val = $mapping_data['mapping-'.$i];
+		// 		$textbox_val = $mapping_data['textbox-'.$i];
+		// 		if ( $mapping_val != 'add_custom-' . $i ) {
+		// 			$new_post[$mapping_val] = $value[$i];
+		// 		} else {
+		// 			$new_post[$textbox_val] = $value[$i];
+		// 			$custom_fields[$textbox_val] = $value[$i];
+		// 		}
+		// 	}
+		// }
+		// 
+		// for ( $inc=0; $inc<count($value); $inc++ ) {
+		// 	foreach($existing_meta_keys as $k => $v) {
+		// 		if (array_key_exists($v,$new_post)) {
+		// 			$custom_fields[$v] = $new_post[$v];
+		// 		}
+		// 	}
+		// }
+
+
+		// Iterate through $new_post:
 		foreach ($new_post as $post_key => $cval) {
-			if ($post_key!='post_category' && $post_key!='post_tag' && $post_key!='featured_image') {
-				if (array_key_exists($post_key,$custom_fields)) {
-					$darray[$post_key] = $new_post[$post_key];
+			if ($post_key!='post_category' && $post_key!='post_tag' && $post_key!='featured_image') { // Not a category, tag, or image.
+				if (array_key_exists($post_key,$custom_fields)) { // This is a custom field.
+					$darray[$post_key] = $new_post[$post_key]; // 
 			   	} else {
 			   		$data_array[$post_key] = $new_post[$post_key];
 			   	}
-				} else {
+			} else {
 		   		if ($post_key == 'post_tag') {
 		   			$tags[$post_key]=$new_post[$post_key];
 				}
@@ -434,6 +467,9 @@ function dcsvi_new_job($posts) {
 	wp_schedule_event( time(), 'five_seconds', 'dcsvi_job_scheduler', array($new_job_id) );
 	if (!get_option("dcsvi_running_job_$new_job_id")) {
 		add_option( "dcsvi_running_job_$new_job_id", 'Started...', '', 'no');
+	}
+	if (!get_option("dcsvi_job_part_$new_job_id")) {
+		add_option( "dcsvi_job_part_$new_job_id", 'Started...', '', 'no');
 	}
 }
 
