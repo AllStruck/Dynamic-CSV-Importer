@@ -101,7 +101,7 @@ add_action('admin_enqueue_scripts', 'dcsvi_load_scripts');
 
 
 
-function description() {
+function dcsvi_description() {
 	// Return description of plugin:
 	__('<p>Dynamic CSV Importer will add new posts, pages, or custom posts of a custom type from a CSV file. You do not need to change the CSV file; select the CSV file and map each field to the post field (custom meta fields are supported).</p>');
 }
@@ -182,7 +182,7 @@ function dcsvi_interface() {
 					'defaultfieldscount' => count($default_fields)+2,
 					'header_count' => count($headers),
 					'default_count' => count($default_fields),
-					'results' => description(),
+					'results' => dcsvi_description(),
 					'deliminator' => $delimiter,
 					'header_array' => $headers,
 					'post_type' => $_POST['dcsvi-post-type'],
@@ -230,7 +230,7 @@ function dcsvi_interface() {
 				'post_as_status' => $post_as_status,
 				'draft_checked' => ($post_as_status == 'draft') ? TRUE : FALSE,
 				'post_types' => get_post_types(array('public' => TRUE), 'objects'),
-				'description_text' => description(),
+				'description_text' => dcsvi_description(),
 				'deliminator' => $delimiter,
 				'header_array' => $headers,
 				));
@@ -287,45 +287,19 @@ function dcsvi_preprocess_csv_to_post() {
 			}
 		}
 
-		// OLD VERSION:
-		// for ($i=0;$i<count($value); $i++) {
-		// 	if ( array_key_exists('mapping-'.$i, $mapping_data) ) {
-		// 		$mapping_val = $mapping_data['mapping-'.$i];
-		// 		$textbox_val = $mapping_data['textbox-'.$i];
-		// 		if ( $mapping_val != 'add_custom-' . $i ) {
-		// 			$new_post[$mapping_val] = $value[$i];
-		// 		} else {
-		// 			$new_post[$textbox_val] = $value[$i];
-		// 			$custom_fields[$textbox_val] = $value[$i];
-		// 		}
-		// 	}
-		// }
-		// 
-		// for ( $inc=0; $inc<count($value); $inc++ ) {
-		// 	foreach($existing_meta_keys as $k => $v) {
-		// 		if (array_key_exists($v,$new_post)) {
-		// 			$custom_fields[$v] = $new_post[$v];
-		// 		}
-		// 	}
-		// }
 
 
-		// Iterate through $new_post:
+
+		// Iterate through $new_post and add in other types of content:
 		foreach ($new_post as $post_key => $cval) {
-			if ($post_key!='post_category' && $post_key!='post_tag' && $post_key!='featured_image') { // Not a category, tag, or image.
-				if (array_key_exists($post_key,$custom_fields)) { // This is a custom field.
-					$darray[$post_key] = $new_post[$post_key]; // 
-			   	} else {
-			   		$data_array[$post_key] = $new_post[$post_key];
-			   	}
-			} else {
-		   		if ($post_key == 'post_tag') {
+			switch ($post_key) {
+				case 'post_tag': // Tags
 		   			$tags[$post_key]=$new_post[$post_key];
-				}
-				if ($post_key == 'post_category') {
+					break;
+				case 'post_category': // Categories
 					$categories[$post_key]=$new_post[$post_key];
-				}
-				if ($post_key == 'featured_image') {
+					break;
+				case 'featured_image': // Featured images
 					$file_url=$filetype[$post_key]=$new_post[$post_key];
 					$file_type = explode('.',$filetype[$post_key]);
 					$count = count($file_type);
@@ -362,9 +336,17 @@ function dcsvi_preprocess_csv_to_post() {
 					$file['post_title']=$img_title;
 					$file['post_content']='';
 					$file['post_status']='inherit';
-				}
+					break;
+				default: // Everything else
+					if (array_key_exists($post_key,$custom_fields)) { // This is a custom field.
+						$darray[$post_key] = $new_post[$post_key]; // 
+				   	} else {
+				   		$data_array[$post_key] = $new_post[$post_key];
+				   	}
 			}
 		}
+		
+
 		
 		$data_array['post_status'] = $_POST['dcsvi_import_status'];
 		$data_array['post_type']=$_POST['dcsvi_importer_cat'];
